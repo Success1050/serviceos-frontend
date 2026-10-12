@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import apiClient from "@/lib/api/client";
@@ -8,7 +8,7 @@ import { Button, Input, Card, CardHeader, CardTitle, CardDescription, CardConten
 import { Building2, Lock, Mail, ShieldAlert, Sparkles, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -203,3 +203,31 @@ export default function LoginPage() {
     </div>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-emerald-50/20 to-slate-100">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="inline-flex w-12 h-12 rounded-xl bg-[#006937] items-center justify-center text-white shadow-md mb-3">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">ServiceOS Enterprise</h1>
+              <p className="text-xs text-slate-500 mt-1">Multi-Tenant Operating System for Field Contractors</p>
+            </div>
+            <Card className="shadow-lg border-slate-200">
+              <CardContent className="p-8 text-center text-slate-400 text-sm">
+                Loading...
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  );
+}
+
