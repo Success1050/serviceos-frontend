@@ -60,6 +60,8 @@ export interface Tenant {
   createdAt: string;
 }
 
+export type PortalStatus = 'NOT_ACTIVATED' | 'INVITATION_PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+
 export interface CustomerRecord {
   id: string;
   tenantId: string;
@@ -69,54 +71,178 @@ export interface CustomerRecord {
   address?: string;
   city?: string;
   state?: string;
-  portalStatus: 'NOT_ACTIVATED' | 'INVITATION_PENDING' | 'ACTIVE' | 'SUSPENDED';
+  portalStatus: PortalStatus;
   createdAt: string;
+  updatedAt?: string;
+  relationshipId?: string;
+  _count?: {
+    quotes?: number;
+    jobs?: number;
+    invoices?: number;
+    assets?: number;
+  };
+  quotes?: any[];
+  jobs?: any[];
+  invoices?: any[];
+  assets?: any[];
 }
+
+export enum DuplicateRule {
+  SKIP = 'SKIP',
+  UPDATE = 'UPDATE',
+  CREATE_NEW = 'CREATE_NEW',
+}
+
+export interface AnalyzeImportResponse {
+  headers: string[];
+  suggestedMapping: Record<string, string>;
+  rowCount: number;
+}
+
+export interface PreviewImportResponse {
+  metrics: {
+    totalProcessed: number;
+    validCount: number;
+    duplicateCount: number;
+    invalidCount: number;
+  };
+  valid: any[];
+  duplicates: Array<{
+    imported: any;
+    existing: any;
+    _reason: string;
+  }>;
+  invalid: any[];
+}
+
+export interface ExecuteImportResponse {
+  message: string;
+  created: number;
+  updated: number;
+  skipped: number;
+  invalid: number;
+}
+
+
+export type AssetStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+export type WarrantyStatus = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'NO_WARRANTY';
 
 export interface Asset {
   id: string;
   tenantId: string;
   customerRecordId: string;
-  customerRecord?: CustomerRecord;
+  customerRecord?: {
+    id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+  };
   name: string;
+  manufacturer?: string | null;
+  modelNumber?: string | null;
+  serialNumber?: string | null;
+  installDate?: string | null;
+  warrantyExpiresAt?: string | null;
+  warrantyDocumentUrl?: string | null;
+  status: AssetStatus;
+  specifications?: Record<string, any>;
+  _count?: {
+    serviceRequests?: number;
+    maintenanceSchedules?: number;
+    supportTickets?: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateAssetInput {
+  name: string;
+  customerRecordId: string;
   manufacturer?: string;
   modelNumber?: string;
   serialNumber?: string;
   installDate?: string;
   warrantyExpiresAt?: string;
   warrantyDocumentUrl?: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
-  specifications?: Record<string, any>;
+  status?: AssetStatus;
 }
 
-export interface QuoteItem {
+export interface UpdateAssetInput {
+  name?: string;
+  customerRecordId?: string;
+  manufacturer?: string;
+  modelNumber?: string;
+  serialNumber?: string;
+  installDate?: string;
+  warrantyExpiresAt?: string;
+  warrantyDocumentUrl?: string;
+  status?: AssetStatus;
+}
+
+
+export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+export type BillingType = 'FIXED' | 'AUTH_AND_CAPTURE' | 'MILESTONE';
+
+export interface QuoteMilestone {
+  id?: string;
+  quoteId?: string;
+  title: string;
+  percentage: number;
+  amount: number;
+  order?: number;
+  dueDate?: string | null;
+  status?: 'PENDING' | 'INVOICED' | 'PAID';
+}
+
+export interface QuoteLineItem {
   id?: string;
   description: string;
   quantity: number;
   unitPrice: number;
   total: number;
+  category?: 'EQUIPMENT' | 'LABOR' | 'MATERIALS' | 'PERMIT';
 }
 
 export interface Quote {
   id: string;
   tenantId: string;
-  customerId: string;
-  customer?: CustomerRecord;
-  quoteNumber: string;
-  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  totalAmount: number;
-  items: QuoteItem[];
-  validUntil: string;
-  terms?: string;
-  signedAt?: string;
-  signatureUrl?: string;
+  customerRecordId: string;
+  customerRecord?: {
+    id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+  };
+  title: string;
+  amount: number | string;
+  status: QuoteStatus;
+  billingType: BillingType;
+  termsAndConditions?: string | null;
+  signedTermsAt?: string | null;
+  signerName?: string | null;
+  signatureData?: string | null;
+  milestones?: QuoteMilestone[];
+  items?: QuoteLineItem[];
+  subtotal?: number;
+  discountAmount?: number;
+  taxAmount?: number;
+  validUntil?: string;
   createdAt: string;
+  updatedAt?: string;
+  _count?: {
+    jobs?: number;
+  };
 }
 
+export type QuoteItem = QuoteLineItem;
+
 export interface Invoice {
+
+
   id: string;
   tenantId: string;
   customerId: string;

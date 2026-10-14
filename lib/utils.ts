@@ -75,3 +75,82 @@ export function truncate(str: string, length: number = 30): string {
   if (!str) return "";
   return str.length > length ? str.substring(0, length) + "..." : str;
 }
+
+/**
+ * Calculates warranty countdown and status variant
+ */
+export function getWarrantyStatus(warrantyExpiresAt: string | Date | null | undefined) {
+  if (!warrantyExpiresAt) {
+    return {
+      status: "NO_WARRANTY" as const,
+      label: "No Warranty",
+      shortLabel: "None",
+      daysRemaining: 0,
+      isExpiringSoon: false,
+      isExpired: false,
+      variant: "neutral" as const,
+    };
+  }
+
+  const expiry = new Date(warrantyExpiresAt).getTime();
+  if (isNaN(expiry)) {
+    return {
+      status: "NO_WARRANTY" as const,
+      label: "Invalid Date",
+      shortLabel: "Invalid",
+      daysRemaining: 0,
+      isExpiringSoon: false,
+      isExpired: false,
+      variant: "neutral" as const,
+    };
+  }
+
+  const now = Date.now();
+  const diffMs = expiry - now;
+  const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (daysRemaining < 0) {
+    const daysAgo = Math.abs(daysRemaining);
+    return {
+      status: "EXPIRED" as const,
+      label: `Expired (${daysAgo}d ago)`,
+      shortLabel: "Expired",
+      daysRemaining,
+      isExpiringSoon: false,
+      isExpired: true,
+      variant: "danger" as const,
+    };
+  }
+
+  if (daysRemaining <= 30) {
+    return {
+      status: "EXPIRING_SOON" as const,
+      label: `Expiring Soon (${daysRemaining}d left)`,
+      shortLabel: `${daysRemaining}d left`,
+      daysRemaining,
+      isExpiringSoon: true,
+      isExpired: false,
+      variant: "warning" as const,
+    };
+  }
+
+  let durationText = `${daysRemaining}d left`;
+  if (daysRemaining > 365) {
+    const years = (daysRemaining / 365).toFixed(1);
+    durationText = `${years.replace(/\.0$/, "")}y left`;
+  } else if (daysRemaining > 60) {
+    const months = Math.round(daysRemaining / 30);
+    durationText = `${months}mo left`;
+  }
+
+  return {
+    status: "ACTIVE" as const,
+    label: `Protected (${durationText})`,
+    shortLabel: durationText,
+    daysRemaining,
+    isExpiringSoon: false,
+    isExpired: false,
+    variant: "success" as const,
+  };
+}
+

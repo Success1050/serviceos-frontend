@@ -6,3 +6,4 @@ export * from "./stat-card";
 export * from "./dialog";
 export * from "./table";
 export * from "./avatar";
+export * from "./switch";

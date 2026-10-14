@@ -46,7 +46,10 @@ apiClient.interceptors.response.use(
       error.message ||
       "An unexpected error occurred";
 
-    const formattedError = new Error(Array.isArray(message) ? message.join(", ") : message);
+    const formattedError: any = new Error(Array.isArray(message) ? message.join(", ") : message);
+    formattedError.status = error.response?.status;
+    formattedError.statusCode = error.response?.status;
+    formattedError.response = error.response;
     return Promise.reject(formattedError);
   }
 );
