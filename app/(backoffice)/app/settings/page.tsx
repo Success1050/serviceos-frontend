@@ -35,7 +35,9 @@ import {
   Info,
   ArrowLeft,
   RefreshCw,
+  CreditCard,
 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 interface TenantSettingsData {
   id?: string;
@@ -174,7 +176,9 @@ export default function SettingsPage() {
   const { user, tenant } = useAuth();
   const [settings, setSettings] = useState<TenantSettingsData>(DEFAULT_SETTINGS);
   const [originalSettings, setOriginalSettings] = useState<TenantSettingsData>(DEFAULT_SETTINGS);
-  const [activeTab, setActiveTab] = useState<"profile" | "branding" | "portal" | "invoicing" | "scheduling">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "branding" | "portal" | "invoicing" | "scheduling" | "subscription">("profile");
+  const [subscriptionData, setSubscriptionData] = useState<any>(null);
+  const [isLoadingSub, setIsLoadingSub] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPermissionDenied, setIsPermissionDenied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -224,9 +228,26 @@ export default function SettingsPage() {
     }
   };
 
-  // Fetch settings on mount
+  const loadSubscription = async () => {
+    setIsLoadingSub(true);
+    try {
+      const res = await apiClient.get("/settings/subscription");
+      setSubscriptionData(res.data);
+    } catch (err) {
+      console.warn("Could not load subscription details", err);
+    } finally {
+      setIsLoadingSub(false);
+    }
+  };
+
+  // Fetch settings & subscription on mount
   useEffect(() => {
     loadSettings();
+    loadSubscription();
+
+    if (typeof window !== "undefined" && window.location.search.includes("tab=subscription")) {
+      setActiveTab("subscription");
+    }
   }, []);
 
   // Dirty state checking
@@ -520,6 +541,29 @@ export default function SettingsPage() {
               {isLockedByParent("scheduling") && (
                 <Lock className={`w-3.5 h-3.5 ${activeTab === "scheduling" ? "text-white/80" : "text-amber-500"}`} />
               )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("subscription")}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
+                activeTab === "subscription"
+                  ? "bg-[#006937] text-white shadow-xs"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <CreditCard className="w-4 h-4 shrink-0" />
+                <span>Subscription & Plan</span>
+              </div>
+              <span
+                className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                  activeTab === "subscription"
+                    ? "bg-white/20 text-white"
+                    : "bg-emerald-50 text-[#006937] border border-emerald-200"
+                }`}
+              >
+                {subscriptionData?.subscription?.plan?.tier || "Plan"}
+              </span>
             </button>
           </div>
         </Card>
@@ -1306,6 +1350,221 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* TAB 6: SUBSCRIPTION & PLAN */}
+          {activeTab === "subscription" && (
+            <div className="space-y-6">
+              <Card className="border-slate-200 shadow-xs">
+                <CardHeader className="border-b border-slate-100 pb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#006937] flex items-center justify-center font-bold">
+                        <CreditCard className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-base font-bold text-slate-900">
+                            Current Subscription & Entitlements
+                          </CardTitle>
+                          <Badge variant="success" className="text-[10px] bg-emerald-100 text-emerald-800">
+                            {subscriptionData?.subscription?.status || "ACTIVE"}
+                          </Badge>
+                        </div>
+                        <CardDescription className="text-xs text-slate-500">
+                          {isSubCompany
+                            ? `Operating under franchise master license inherited from Corporate HQ`
+                            : `Corporate Franchise master license and operational limits`}
+                        </CardDescription>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={loadSubscription}
+                        disabled={isLoadingSub}
+                        className="text-xs h-8 gap-1.5"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isLoadingSub ? "animate-spin" : ""}`} />
+                        <span>Refresh</span>
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="pt-6 space-y-6">
+                  {/* Master Plan Highlight Banner */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-900 to-slate-900 text-white shadow-md relative overflow-hidden">
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white backdrop-blur-xs flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-amber-300" />
+                            {subscriptionData?.subscription?.plan?.tier || "ENTERPRISE"} TIER
+                          </span>
+                          <span className="text-[10px] text-emerald-200">
+                            • {subscriptionData?.subscription?.billingCycle || "ANNUAL"} BILLING
+                          </span>
+                        </div>
+                        <h2 className="text-2xl font-black tracking-tight text-white">
+                          {subscriptionData?.subscription?.plan?.name || "Enterprise Franchise Master License"}
+                        </h2>
+                        <p className="text-xs text-emerald-100/80 mt-1 max-w-xl">
+                          {subscriptionData?.subscription?.plan?.description ||
+                            "Full multi-branch franchise network God-View, 3-tier fintech wallets, split payroll settlements, and unlimited operational capacity."}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="text-xs text-emerald-200 font-medium">Billed Amount</div>
+                        <div className="text-2xl font-black text-white mt-0.5">
+                          ${subscriptionData?.subscription?.billingCycle === "ANNUAL"
+                            ? subscriptionData?.subscription?.plan?.priceAnnual || "7,990"
+                            : subscriptionData?.subscription?.plan?.priceMonthly || "799"}
+                          <span className="text-xs font-normal text-emerald-200">
+                            /{subscriptionData?.subscription?.billingCycle === "ANNUAL" ? "yr" : "mo"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-200/80 mt-0.5">
+                          Renews: {formatDate(subscriptionData?.subscription?.currentPeriodEnd || new Date(Date.now() + 365 * 86400000))}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inheritance Info Banner if Sub-Company */}
+                  {isSubCompany ? (
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                      <Building2 className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <p className="font-bold text-amber-900">
+                          Cascading Franchise Inheritance
+                        </p>
+                        <p className="text-amber-800 mt-0.5 leading-relaxed">
+                          Your branch operates as a child subsidiary under{" "}
+                          <strong>{subscriptionData?.parentTenantName || "Franchise HQ"}</strong>. All enterprise module unlocks and feature entitlements are automatically provisioned and funded by your Corporate Franchisor.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                      <ShieldCheck className="w-5 h-5 text-[#006937] shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <p className="font-bold text-emerald-950">
+                          Franchise Corporate Master Account
+                        </p>
+                        <p className="text-emerald-800 mt-0.5 leading-relaxed">
+                          As Corporate HQ, your plan entitlements cascade to all regional branches and sub-companies in your network. Platform SuperAdmins can adjust quotas or add custom modules on demand.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quotas & Capacity Limits */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">
+                      Licensed Quotas & Capacity Limits
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div className="text-xs text-slate-500 font-medium">Licensed Staff Seats</div>
+                        <div className="text-2xl font-black text-slate-900 mt-1">
+                          {subscriptionData?.subscription?.customSeatQuota || subscriptionData?.subscription?.plan?.maxSeats || 100}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Concurrent backoffice logins</p>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div className="text-xs text-slate-500 font-medium">Field Technicians</div>
+                        <div className="text-2xl font-black text-slate-900 mt-1">
+                          {subscriptionData?.subscription?.customTechnicianQuota || subscriptionData?.subscription?.plan?.maxTechnicians || 200}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Mobile PWA accounts</p>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div className="text-xs text-slate-500 font-medium">Branch Subsidiaries</div>
+                        <div className="text-2xl font-black text-slate-900 mt-1">
+                          {subscriptionData?.subscription?.customBranchQuota || subscriptionData?.subscription?.plan?.maxBranches || 50}
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Child franchise entities</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Feature Gates & Modules Matrix */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        Active Module Entitlements Matrix
+                      </h4>
+                      <Badge variant="neutral" className="text-[10px]">
+                        10 of 10 Modules Unlocked
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {[
+                        { name: "Customer CRM & Deduplication", code: "MODULE_CRM", desc: "Customer records, CSV fuzzy mapping, and site locations" },
+                        { name: "Commercial Quote Builder", code: "MODULE_QUOTES", desc: "Line items, equipment calculations, and PDF generation" },
+                        { name: "Multi-Gateway Invoicing & Billing", code: "MODULE_INVOICES", desc: "Paystack (NGN) & Stripe (USD) card/bank checkout" },
+                        { name: "Visual Dispatch & Buffer Rules", code: "MODULE_DISPATCH", desc: "Technician calendar, drag-and-drop, and conflict engine" },
+                        { name: "Parts Inventory & Warehouses", code: "MODULE_WAREHOUSE", desc: "Truck stock levels, parts requisition, and OCR expenses" },
+                        { name: "Branded Customer Portal", code: "MODULE_CUSTOMER_PORTAL", desc: "White-labeled (/s/:slug), passwordless OTP, and tracking" },
+                        { name: "Support Desk & Warranty Claims", code: "MODULE_SUPPORT_DESK", desc: "Hardware warranty claims and $0 rework dispatch" },
+                        { name: "Blue-Collar HR & SMS Auth", code: "MODULE_BLUE_COLLAR_HR", desc: "Phone-only onboarding, document dossier, and SMS PIN" },
+                        { name: "3-Tier FinTech Wallets & Payroll", code: "MODULE_FINTECH_WALLETS", desc: "HQ/Branch/Staff split settlements & automated payouts" },
+                        { name: "Franchise God-View Telemetry", code: "MODULE_ENTERPRISE_HQ", desc: "Franchisor telemetry, network KPIs, and royalty reports" },
+                      ].map((mod) => (
+                        <div
+                          key={mod.code}
+                          className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-start gap-3 shadow-2xs hover:border-emerald-300 transition-colors"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-emerald-50 text-[#006937] flex items-center justify-center shrink-0 mt-0.5">
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-800">{mod.name}</span>
+                              <span className="text-[9px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">
+                                ACTIVE
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{mod.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Support / Upgrade Banner */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+                        <HelpCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">
+                          Need Higher Quotas or Custom API Integrations?
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Subscriptions and custom enterprise volume tiers are provisioned directly by Platform SuperAdministration.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => router.push("/app/support")}
+                      className="bg-[#006937] hover:bg-[#004D28] text-white text-xs whitespace-nowrap"
+                    >
+                      <span>Contact Platform Support</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       </div>

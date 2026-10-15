@@ -19,6 +19,7 @@ import {
   Layers,
   Sparkles,
   Download,
+  Receipt,
 } from "lucide-react";
 
 interface QuotePreviewModalProps {
@@ -26,6 +27,7 @@ interface QuotePreviewModalProps {
   onClose: () => void;
   quote: Quote | null;
   onQuoteSent?: (quote: Quote) => void;
+  onConvertToInvoice?: (quote: Quote, createdInvoice?: any) => void;
 }
 
 export function QuotePreviewModal({
@@ -33,9 +35,12 @@ export function QuotePreviewModal({
   onClose,
   quote,
   onQuoteSent,
+  onConvertToInvoice,
 }: QuotePreviewModalProps) {
   const [sending, setSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [convertSuccess, setConvertSuccess] = useState(false);
 
   if (!isOpen || !quote) return null;
 
@@ -59,6 +64,23 @@ export function QuotePreviewModal({
       alert(err.response?.data?.message || "Failed to send quote to customer.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleConvertToInvoice = async () => {
+    setConverting(true);
+    try {
+      const res = await apiClient.post(`/invoices/from-quote/${quote.id}`);
+      setConvertSuccess(true);
+      if (onConvertToInvoice) {
+        onConvertToInvoice(quote, res.data);
+      }
+      setTimeout(() => setConvertSuccess(false), 3000);
+    } catch (err: any) {
+      console.error("Failed to convert quote to invoice:", err);
+      alert(err.response?.data?.message || "Failed to convert quote to invoice.");
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -275,6 +297,17 @@ export function QuotePreviewModal({
           >
             <Printer className="w-3.5 h-3.5 text-slate-600" />
             <span>Print / Export PDF</span>
+          </Button>
+
+          {/* 1-Click Convert Quote to Invoice */}
+          <Button
+            type="button"
+            disabled={converting || convertSuccess}
+            onClick={handleConvertToInvoice}
+            className="text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4 shadow-sm flex items-center gap-1.5 cursor-pointer"
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            <span>{converting ? "Converting..." : convertSuccess ? "Invoice Created!" : "Convert to Invoice"}</span>
           </Button>
 
           {quote.status === "DRAFT" && (

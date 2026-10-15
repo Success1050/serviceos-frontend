@@ -240,22 +240,53 @@ export interface Quote {
 
 export type QuoteItem = QuoteLineItem;
 
+export type InvoiceStatus =
+  | 'DRAFT'
+  | 'SENT'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'OVERDUE'
+  | 'CANCELLED'
+  | 'DISPUTED';
+
 export interface Invoice {
-
-
   id: string;
   tenantId: string;
-  customerId: string;
-  customer?: CustomerRecord;
-  invoiceNumber: string;
-  status: 'DRAFT' | 'SENT' | 'PAID' | 'PARTIALLY_PAID' | 'OVERDUE' | 'DISPUTED' | 'CANCELLED';
+  title: string;
   amount: number;
-  balanceDue: number;
-  dueDate: string;
-  paidAt?: string;
-  escrowHeld?: boolean;
-  items?: QuoteItem[];
+  status: InvoiceStatus;
+  customerRecordId: string;
+  customerRecord?: {
+    id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+  };
+  jobId?: string | null;
+  job?: {
+    id: string;
+    title: string;
+    status: string;
+  } | null;
+  tenant?: {
+    id: string;
+    name: string;
+    slug: string;
+    settings?: any;
+  };
+  paymentTransactions?: PaymentTransaction[];
+  dueDate?: string | null;
+  paidAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
+  // Legacy aliases
+  customerId?: string;
+  customer?: CustomerRecord;
+  invoiceNumber?: string;
+  balanceDue?: number;
+  items?: QuoteItem[];
 }
 
 export interface Job {
@@ -329,4 +360,29 @@ export interface RealtimeEventPayload<T = any> {
   userId?: string;
   data: T;
   timestamp: string;
+}
+
+export interface PaymentTransaction {
+  id: string;
+  tenantId: string;
+  customerRecordId?: string | null;
+  invoiceId?: string | null;
+  gateway: 'PAYSTACK' | 'STRIPE' | 'FLUTTERWAVE';
+  transactionReference: string;
+  gatewayReference?: string | null;
+  amount: number;
+  currency: string;
+  type: string;
+  paymentMethod?: string | null;
+  status: 'PENDING' | 'SUCCESSFUL' | 'FAILED' | 'REFUNDED';
+  metadata?: Record<string, any> | null;
+  createdAt: string;
+}
+
+export interface InvoiceMetrics {
+  totalBilled: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  overdueCount: number;
+  paidCount: number;
 }

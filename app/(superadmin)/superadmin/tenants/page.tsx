@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import apiClient from "@/lib/api/client";
 import {
   Building2,
   ChevronDown,
@@ -52,10 +53,17 @@ interface ParentTenant {
 export default function SuperAdminTenantsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [expandedTenants, setExpandedTenants] = useState<Record<string, boolean>>({
-    "parent-1": true,
-    "parent-2": false,
-  });
+  const [expandedTenants, setExpandedTenants] = useState<Record<string, boolean>>({});
+
+  // Live Subscription Management State
+  const [plans, setPlans] = useState<any[]>([]);
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [selectedTenantForSub, setSelectedTenantForSub] = useState<any | null>(null);
+  const [subPlanId, setSubPlanId] = useState("");
+  const [subStatus, setSubStatus] = useState<string>("ACTIVE");
+  const [subBillingCycle, setSubBillingCycle] = useState<string>("ANNUAL");
+  const [subLoading, setSubLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -182,6 +190,95 @@ export default function SuperAdminTenantsPage() {
     },
   ]);
 
+  // Load real tenants and plans from backend
+  const fetchTenantsAndPlans = useCallback(async () => {
+    try {
+      const [tenantsRes, plansRes] = await Promise.all([
+        apiClient.get("/superadmin/tenants?isParentOnly=true").catch(() => ({ data: null })),
+        apiClient.get("/superadmin/subscriptions/plans").catch(() => ({ data: [] })),
+      ]);
+
+      if (plansRes?.data && Array.isArray(plansRes.data)) {
+        setPlans(plansRes.data);
+      }
+
+      if (tenantsRes?.data?.tenants && Array.isArray(tenantsRes.data.tenants)) {
+        const liveTenants: ParentTenant[] = tenantsRes.data.tenants.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          industry: t.settings?.businessProfile?.industry || "Solar & Energy",
+          ownerName: t.users?.[0] ? `${t.users[0].firstName || ""} ${t.users[0].lastName || ""}`.trim() || t.users[0].email : "Platform Admin",
+          ownerEmail: t.users?.[0]?.email || "admin@tenant.com",
+          plan: (t.subscription?.plan?.tier || "ENTERPRISE") as any,
+          status: (t.isSuspended ? "SUSPENDED" : "ACTIVE") as any,
+          createdDate: new Date(t.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          subCompanies: (t.children || []).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            city: c.settings?.businessProfile?.city || "Nigeria",
+            managerName: "Branch Manager",
+            managerEmail: `${c.slug}@serviceos.ng`,
+            techniciansCount: c.users?.filter((u: any) => u.isFieldTech)?.length || 0,
+            activeJobsCount: c.jobs?.length || 0,
+            monthlyRevenue: 0,
+            status: c.isSuspended ? "SUSPENDED" : "ACTIVE",
+          })),
+        }));
+
+        if (liveTenants.length > 0) {
+          setTenants(liveTenants);
+          const initialExpanded: Record<string, boolean> = {};
+          liveTenants.forEach((lt) => {
+            initialExpanded[lt.id] = true;
+          });
+          setExpandedTenants(initialExpanded);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not load backend tenants, keeping initialized view.", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTenantsAndPlans();
+  }, [fetchTenantsAndPlans]);
+
+  const handleOpenSubscriptionModal = (parent: ParentTenant) => {
+    setSelectedTenantForSub(parent);
+    // Find current plan id
+    const currentPlan = plans.find((p) => p.tier === parent.plan);
+    setSubPlanId(currentPlan?.id || plans[0]?.id || "");
+    setSubStatus(parent.status === "SUSPENDED" ? "SUSPENDED" : "ACTIVE");
+    setSubBillingCycle("ANNUAL");
+    setIsSubModalOpen(true);
+  };
+
+  const handleSaveSubscription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTenantForSub || !subPlanId) return;
+
+    try {
+      setSubLoading(true);
+      await apiClient.patch(`/superadmin/tenants/${selectedTenantForSub.id}/subscription`, {
+        planId: subPlanId,
+        status: subStatus,
+        billingCycle: subBillingCycle,
+      });
+
+      const assignedPlan = plans.find((p) => p.id === subPlanId);
+      setNotice(`Subscription successfully updated for "${selectedTenantForSub.name}" to ${assignedPlan?.name || "Selected Plan"}.`);
+      setIsSubModalOpen(false);
+      fetchTenantsAndPlans();
+    } catch (err: any) {
+      console.error("Failed to assign subscription:", err);
+      alert(err.response?.data?.message || "Failed to assign subscription. Please try again.");
+    } finally {
+      setSubLoading(false);
+    }
+  };
+
   const toggleExpand = (id: string) => {
     setExpandedTenants((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -234,6 +331,19 @@ export default function SuperAdminTenantsPage() {
           </button>
         </div>
       </div>
+
+      {/* Notice Banner */}
+      {notice && (
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{notice}</span>
+          </div>
+          <button onClick={() => setNotice(null)} className="text-emerald-400 hover:text-emerald-200">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Global Roll-up KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -360,6 +470,15 @@ export default function SuperAdminTenantsPage() {
 
                 {/* Parent Actions */}
                 <div className="flex items-center gap-2.5 shrink-0 self-end lg:self-center">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenSubscriptionModal(parent)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/35 text-indigo-300 border border-indigo-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Assign Plan</span>
+                  </button>
+
                   <Link
                     href={`/superadmin/subscriptions`}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all"
@@ -369,9 +488,9 @@ export default function SuperAdminTenantsPage() {
 
                   <button
                     onClick={() => alert(`Impersonating ${parent.name} as SuperAdmin...`)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>Impersonate Owner</span>
+                    <span>Impersonate</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -707,6 +826,115 @@ export default function SuperAdminTenantsPage() {
                   className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
                 >
                   Provision Organization
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Assign Subscription Modal */}
+      {isSubModalOpen && selectedTenantForSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-6 space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    Assign Subscription Plan
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Set tier, status, and module unlock entitlements for {selectedTenantForSub.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSubModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSubscription} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1.5">
+                  Select Subscription Plan Tier <span className="text-rose-400">*</span>
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  {(plans.length > 0 ? plans : [
+                    { id: "1775a8e6-0c07-4ebc-aafe-572974b28331", name: "Enterprise Franchise", tier: "ENTERPRISE", priceAnnual: "7990" },
+                    { id: "07fd5f49-bd2f-4fe5-9f68-9ce5c9cd96a3", name: "Growth Plan", tier: "GROWTH", priceAnnual: "2990" },
+                    { id: "5101cc2e-5c45-4945-855e-56faf6b69dc4", name: "Starter Plan", tier: "STARTER", priceAnnual: "990" },
+                  ]).map((p: any) => (
+                    <div
+                      key={p.id}
+                      onClick={() => setSubPlanId(p.id)}
+                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                        subPlanId === p.id
+                          ? "border-indigo-500 bg-indigo-500/10 shadow-xs"
+                          : "border-slate-800 bg-slate-950/60 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white text-sm">{p.name}</span>
+                        <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30">
+                          {p.tier}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Unlocks {p.tier === "ENTERPRISE" ? "all 10 modules (FinTech Wallets, HQ God-View, Invoicing, Quotes)" : p.tier === "GROWTH" ? "8 core modules (Dispatch, Warehouse, Invoicing, Quotes)" : "CRM, Quotes & Invoicing"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1.5">Subscription Status</label>
+                  <select
+                    value={subStatus}
+                    onChange={(e) => setSubStatus(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="TRIALING">TRIALING</option>
+                    <option value="PAST_DUE">PAST_DUE</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1.5">Billing Cycle</label>
+                  <select
+                    value={subBillingCycle}
+                    onChange={(e) => setSubBillingCycle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="ANNUAL">ANNUAL (Yearly)</option>
+                    <option value="MONTHLY">MONTHLY</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsSubModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={subLoading}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+                >
+                  {subLoading ? "Applying Plan..." : "Apply Subscription"}
                 </button>
               </div>
             </form>

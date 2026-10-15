@@ -187,6 +187,22 @@ export default function QuotesPage() {
     }
   };
 
+  const handleConvertToInvoice = async (quote: Quote) => {
+    try {
+      const res = await apiClient.post(`/invoices/from-quote/${quote.id}`);
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      setActionNotice(
+        `Commercial Quote "${quote.title}" converted! Invoice INV-${res.data.id.slice(0, 8).toUpperCase()} has been issued.`
+      );
+      setTimeout(() => setActionNotice(null), 5000);
+      setActiveQuoteForPreview(null);
+    } catch (err: any) {
+      console.error("Convert to invoice error:", err);
+      alert(err.response?.data?.message || "Failed to convert quote to invoice.");
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50/50">
       <Header />
@@ -362,6 +378,7 @@ export default function QuotesPage() {
           }}
           onSendQuote={handleSendQuote}
           onDeleteQuote={(quote) => setQuoteToDelete(quote)}
+          onConvertToInvoice={handleConvertToInvoice}
           onAddNew={() => {
             setQuoteToEdit(null);
             setIsBuilderOpen(true);
@@ -395,6 +412,7 @@ export default function QuotesPage() {
           queryClient.invalidateQueries({ queryKey: ["quotes"] });
           setActiveQuoteForPreview(updated);
         }}
+        onConvertToInvoice={handleConvertToInvoice}
       />
 
       {/* Delete Quote Confirmation Dialog */}

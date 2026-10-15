@@ -32,6 +32,7 @@ import {
   Layers,
   Sparkles,
   Printer,
+  Receipt,
 } from "lucide-react";
 
 interface QuoteTableProps {
@@ -41,6 +42,7 @@ interface QuoteTableProps {
   onEditQuote: (quote: Quote) => void;
   onSendQuote: (quote: Quote) => void;
   onDeleteQuote: (quote: Quote) => void;
+  onConvertToInvoice?: (quote: Quote) => void;
   onAddNew: () => void;
   currentPage: number;
   totalPages: number;
@@ -57,6 +59,7 @@ export function QuoteTable({
   onEditQuote,
   onSendQuote,
   onDeleteQuote,
+  onConvertToInvoice,
   onAddNew,
   currentPage,
   totalPages,
@@ -326,6 +329,18 @@ export function QuoteTable({
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
+
+                      {onConvertToInvoice && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onConvertToInvoice(quote)}
+                          className="h-8 w-8 p-0 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg"
+                          title="Convert Quote to Invoice"
+                        >
+                          <Receipt className="w-4 h-4 text-emerald-600" />
+                        </Button>
+                      )}
 
                       {quote.status === "DRAFT" && (
                         <Button
