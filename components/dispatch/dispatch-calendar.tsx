@@ -13,7 +13,6 @@ import {
   MapPin,
   AlertTriangle,
   Zap,
-  Plus,
   Eye,
   Layers,
   SlidersHorizontal,
@@ -35,7 +34,7 @@ interface DispatchCalendarProps {
   onViewModeChange: (mode: CalendarViewMode) => void;
   onSelectJob: (job: Job) => void;
   onSlotClick?: (technicianId: string, dateTime: string) => void;
-  onAddNewJob: () => void;
+  onAddNewJob?: () => void;
 }
 
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
@@ -210,15 +209,6 @@ export function DispatchCalendar({
               <span>List</span>
             </button>
           </div>
-
-          <Button
-            size="sm"
-            onClick={onAddNewJob}
-            className="h-8 text-xs font-bold bg-[#006937] hover:bg-[#004D28] text-white gap-1 shadow-2xs whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Schedule Job</span>
-          </Button>
         </div>
       </div>
 

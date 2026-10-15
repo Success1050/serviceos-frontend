@@ -350,7 +350,7 @@ export default function DispatchPage() {
               className="bg-[#006937] hover:bg-[#004D28] text-white text-xs font-semibold shadow-xs gap-1.5 h-9 px-4 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Dispatch Job</span>
+              <span>Schedule Job</span>
             </Button>
           </div>
         </div>
