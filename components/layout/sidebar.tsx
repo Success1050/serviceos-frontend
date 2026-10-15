@@ -13,6 +13,7 @@ import {
   FileText,
   CreditCard,
   Wrench,
+  Package,
   Headphones,
   UserCheck,
   Wallet,
@@ -73,6 +74,11 @@ export function Sidebar() {
       label: "Asset Registry",
       href: "/app/assets",
       icon: <Wrench className="w-5 h-5 shrink-0" />,
+    },
+    {
+      label: "Inventory & Warehouses",
+      href: "/app/inventory",
+      icon: <Package className="w-5 h-5 shrink-0" />,
     },
     {
       label: "Support Desk",

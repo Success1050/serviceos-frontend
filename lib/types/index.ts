@@ -434,3 +434,66 @@ export interface InvoiceMetrics {
   overdueCount: number;
   paidCount: number;
 }
+
+// ------------------------------------------------------
+// DAY 10: INVENTORY, WAREHOUSES & VIRTUAL TRUCKS
+// ------------------------------------------------------
+
+export type WarehouseType = 'HQ_WAREHOUSE' | 'VIRTUAL_TRUCK';
+
+export interface ProductCatalog {
+  id: string;
+  tenantId: string;
+  name: string;
+  sku?: string | null;
+  price?: number | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  warehouseId: string;
+  productId: string;
+  product: ProductCatalog;
+  quantity: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Warehouse {
+  id: string;
+  tenantId: string;
+  name: string;
+  type: WarehouseType;
+  assignedTechnicianId?: string | null;
+  assignedTechnician?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    tradeSpecialty?: string;
+  } | null;
+  inventoryItems?: InventoryItem[];
+  _count?: {
+    inventoryItems?: number;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type EquipmentRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'FULFILLED';
+
+export interface EquipmentRequest {
+  id: string;
+  tenantId: string;
+  tenant?: { id: string; name: string };
+  hqWarehouseId: string;
+  hqWarehouse?: { id: string; name: string };
+  productId: string;
+  product: ProductCatalog;
+  quantity: number;
+  status: EquipmentRequestStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
