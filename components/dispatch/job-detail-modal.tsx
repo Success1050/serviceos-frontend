@@ -130,7 +130,7 @@ export function JobDetailModal({
       const res = await apiClient.patch(`/jobs/${job.id}`, {
         assignedTechnicianId: null,
         scheduledAt: null,
-        status: "PENDING",
+        status: "SCHEDULED",
       });
       onJobUpdated(res.data);
       setIsEditing(false);
