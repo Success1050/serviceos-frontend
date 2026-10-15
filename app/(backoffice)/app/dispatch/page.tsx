@@ -67,7 +67,7 @@ export default function DispatchPage() {
         const list = Array.isArray(res.data) ? res.data : res.data?.items || [];
         return list;
       } catch (err) {
-        console.error("Backend jobs query failed:", err);
+        console.warn("Backend jobs query notice:", err);
         return [];
       }
     },
@@ -79,8 +79,8 @@ export default function DispatchPage() {
     queryKey: ["technicians"],
     queryFn: async () => {
       try {
-        const res = await apiClient.get("/hr/technicians?limit=50");
-        const list = res.data?.items || res.data || [];
+        const res = await apiClient.get("/jobs/technicians");
+        const list = Array.isArray(res.data) ? res.data : res.data?.items || [];
         if (list.length > 0) return list;
 
         // Fallback default enterprise field roster
@@ -119,7 +119,7 @@ export default function DispatchPage() {
           },
         ];
       } catch (err) {
-        console.error("Backend technicians query error:", err);
+        console.warn("Backend technicians query notice:", err);
         return [
           {
             id: "tech-101",
