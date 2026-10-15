@@ -74,70 +74,16 @@ export default function DispatchPage() {
     staleTime: 1000 * 15,
   });
 
-  // 2. Fetch Technicians
+  // 2. Fetch Technicians from Live Backend
   const { data: techniciansData, isLoading: loadingTechs } = useQuery<Technician[]>({
     queryKey: ["technicians"],
     queryFn: async () => {
       try {
         const res = await apiClient.get("/jobs/technicians");
-        const list = Array.isArray(res.data) ? res.data : res.data?.items || [];
-        if (list.length > 0) return list;
-
-        // Fallback default enterprise field roster
-        return [
-          {
-            id: "tech-101",
-            firstName: "Babajide",
-            lastName: "Adeleke",
-            phone: "+234 803 294 1001",
-            tradeSpecialty: "Solar PV & High-Voltage Electrician",
-            isFieldTech: true,
-          },
-          {
-            id: "tech-102",
-            firstName: "Chinedu",
-            lastName: "Okonkwo",
-            phone: "+234 812 559 8832",
-            tradeSpecialty: "Lithium Battery & Inverter Specialist",
-            isFieldTech: true,
-          },
-          {
-            id: "tech-103",
-            firstName: "Emmanuel",
-            lastName: "Suleiman",
-            phone: "+234 809 112 4490",
-            tradeSpecialty: "Commercial HVAC & Heat Pump Specialist",
-            isFieldTech: true,
-          },
-          {
-            id: "tech-104",
-            firstName: "Fadekemi",
-            lastName: "Williams",
-            phone: "+234 901 883 2219",
-            tradeSpecialty: "Roofing Structural & Mounting Engineer",
-            isFieldTech: true,
-          },
-        ];
+        return Array.isArray(res.data) ? res.data : res.data?.items || [];
       } catch (err) {
         console.warn("Backend technicians query notice:", err);
-        return [
-          {
-            id: "tech-101",
-            firstName: "Babajide",
-            lastName: "Adeleke",
-            phone: "+234 803 294 1001",
-            tradeSpecialty: "Solar PV & High-Voltage Electrician",
-            isFieldTech: true,
-          },
-          {
-            id: "tech-102",
-            firstName: "Chinedu",
-            lastName: "Okonkwo",
-            phone: "+234 812 559 8832",
-            tradeSpecialty: "Lithium Battery & Inverter Specialist",
-            isFieldTech: true,
-          },
-        ];
+        return [];
       }
     },
     staleTime: 1000 * 60,

@@ -34,10 +34,8 @@ export function CreateJobModal({
   initialDate,
   initialTechnicianId,
 }: CreateJobModalProps) {
-  const [title, setTitle] = useState("5kVA Solar Inverter Diagnostic & Inspection");
-  const [description, setDescription] = useState(
-    "Perform full circuit voltage check, battery terminal torque testing, and load safety test."
-  );
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [customerRecordId, setCustomerRecordId] = useState("");
   const [quoteId, setQuoteId] = useState("");
   const [assignedTechnicianId, setAssignedTechnicianId] = useState("");
