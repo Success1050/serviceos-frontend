@@ -302,10 +302,26 @@ function SwimlanesView({
         {technicians.map((tech) => {
           const techJobs = jobs.filter((j) => j.assignedTechnicianId === tech.id);
 
+          // Detect overlaps within this technician's lane
+          const doJobsOverlap = (a: Job, b: Job): boolean => {
+            if (!a.scheduledAt || !b.scheduledAt) return false;
+            const sA = new Date(a.scheduledAt).getTime();
+            const eA = sA + (a.estimatedDuration || 60) * 60000;
+            const sB = new Date(b.scheduledAt).getTime();
+            const eB = sB + (b.estimatedDuration || 60) * 60000;
+            return sA < eB && eA > sB;
+          };
+
+          const hasConflict = techJobs.some((j) =>
+            techJobs.some((other) => other.id !== j.id && doJobsOverlap(j, other))
+          );
+
           return (
             <div
               key={tech.id}
-              className="grid grid-cols-[240px_1fr] min-h-[96px] hover:bg-slate-50/50 transition-colors group"
+              className={`grid grid-cols-[240px_1fr] ${
+                hasConflict ? "min-h-[128px]" : "min-h-[96px]"
+              } hover:bg-slate-50/50 transition-colors group`}
             >
               {/* Left Column: Tech Info Card */}
               <div className="p-3 border-r border-slate-200/80 flex items-center gap-3 bg-white group-hover:bg-slate-50/50 transition-colors">
@@ -323,9 +339,16 @@ function SwimlanesView({
                   <p className="text-[10px] text-emerald-800 font-semibold truncate">
                     {tech.tradeSpecialty || "Solar Engineer"}
                   </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {techJobs.length} {techJobs.length === 1 ? "job" : "jobs"} assigned
-                  </p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <p className="text-[10px] text-slate-400">
+                      {techJobs.length} {techJobs.length === 1 ? "job" : "jobs"} assigned
+                    </p>
+                    {hasConflict && (
+                      <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 py-0.2 rounded border border-rose-200">
+                        Overlap!
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -347,9 +370,10 @@ function SwimlanesView({
                   />
                 ))}
 
-                {/* Placed Job Cards */}
+                {/* Placed Job Cards with Smart Overlap Staggering & Conflict Highlighting */}
                 {techJobs.map((job) => {
-                  const jobStart = new Date(job.scheduledAt!);
+                  if (!job.scheduledAt) return null;
+                  const jobStart = new Date(job.scheduledAt);
                   const startMins =
                     (jobStart.getHours() - startHour) * 60 + jobStart.getMinutes();
                   const duration = job.estimatedDuration || 60;
@@ -357,9 +381,32 @@ function SwimlanesView({
                   // Percentage calculations
                   const leftPercent = Math.max(0, Math.min(100, (startMins / totalMinutes) * 100));
                   const widthPercent = Math.max(
-                    6,
+                    8,
                     Math.min(100 - leftPercent, (duration / totalMinutes) * 100)
                   );
+
+                  const overlappingGroup = techJobs
+                    .filter((other) => doJobsOverlap(job, other))
+                    .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
+
+                  const isConflict = overlappingGroup.length > 1;
+                  const conflictRank = overlappingGroup.findIndex((j) => j.id === job.id);
+
+                  // Staggered vertical geometry when conflicting:
+                  const positionStyles: React.CSSProperties = isConflict
+                    ? {
+                        left: `${leftPercent}%`,
+                        width: `${widthPercent}%`,
+                        top: `${6 + conflictRank * 58}px`,
+                        height: "54px",
+                        zIndex: 10 + conflictRank,
+                      }
+                    : {
+                        left: `${leftPercent}%`,
+                        width: `${widthPercent}%`,
+                        top: "8px",
+                        bottom: "8px",
+                      };
 
                   return (
                     <div
@@ -368,30 +415,36 @@ function SwimlanesView({
                         e.stopPropagation();
                         onSelectJob(job);
                       }}
-                      style={{
-                        left: `${leftPercent}%`,
-                        width: `${widthPercent}%`,
-                      }}
-                      className={`absolute top-2 bottom-2 p-2 rounded-xl border shadow-xs flex flex-col justify-between overflow-hidden cursor-pointer transition-transform hover:scale-[1.01] hover:z-20 ${getJobColorClass(
-                        job.status
-                      )}`}
+                      style={positionStyles}
+                      className={`absolute p-2 rounded-xl border shadow-xs flex flex-col justify-between overflow-hidden cursor-pointer transition-all hover:scale-[1.02] hover:z-30 hover:shadow-md ${
+                        isConflict
+                          ? "bg-rose-50/95 border-rose-300 ring-2 ring-rose-400/40 text-rose-950"
+                          : getJobColorClass(job.status)
+                      }`}
                     >
                       <div className="overflow-hidden">
                         <div className="flex items-center justify-between gap-1">
                           <span className="font-bold text-[11px] truncate leading-tight">
                             {job.title}
                           </span>
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-white/80 px-1 rounded shrink-0">
-                            {job.status}
-                          </span>
+                          {isConflict ? (
+                            <span className="text-[8px] font-black uppercase tracking-wider bg-rose-600 text-white px-1.5 py-0.5 rounded flex items-center gap-0.5 animate-pulse shrink-0">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              <span>Conflict</span>
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold uppercase tracking-wider bg-white/80 px-1 rounded shrink-0">
+                              {job.status}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-600 truncate mt-0.5">
+                        <p className={`text-[10px] truncate mt-0.5 ${isConflict ? "text-rose-800 font-medium" : "text-slate-600"}`}>
                           {job.customerRecord?.name || "Client"}
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-between text-[9px] font-semibold text-slate-500 pt-1 border-t border-black/5 mt-1">
-                        <span>
+                      <div className="flex items-center justify-between text-[9px] font-semibold text-slate-500 pt-1 border-t border-black/5 mt-0.5">
+                        <span className={isConflict ? "text-rose-700 font-bold" : ""}>
                           {jobStart.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         <span>{duration}m</span>
