@@ -420,6 +420,7 @@ export default function DispatchPage() {
         onClose={() => setActiveJobForDetail(null)}
         job={activeJobForDetail}
         technicians={technicians}
+        allJobs={jobs}
         onJobUpdated={handleJobUpdated}
         onTriggerConflict={handleTriggerConflict}
       />

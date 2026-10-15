@@ -27,6 +27,7 @@ interface JobDetailModalProps {
   onClose: () => void;
   job: Job | null;
   technicians: Technician[];
+  allJobs?: Job[];
   onJobUpdated: (updatedJob: Job) => void;
   onJobDeleted?: (jobId: string) => void;
   onTriggerConflict?: (conflictData: any, proposedData: any) => void;
@@ -37,6 +38,7 @@ export function JobDetailModal({
   onClose,
   job,
   technicians,
+  allJobs = [],
   onJobUpdated,
   onJobDeleted,
   onTriggerConflict,
@@ -55,6 +57,17 @@ export function JobDetailModal({
   const currentEnd = currentStart
     ? new Date(currentStart.getTime() + (job.estimatedDuration || 60) * 60000)
     : null;
+
+  // Detect if this job is currently in conflict with another job
+  const conflictingJob = allJobs.find((other) => {
+    if (other.id === job.id || !other.scheduledAt || !job.scheduledAt) return false;
+    if (other.assignedTechnicianId !== job.assignedTechnicianId) return false;
+    const sA = new Date(job.scheduledAt).getTime();
+    const eA = sA + (job.estimatedDuration || 60) * 60000;
+    const sB = new Date(other.scheduledAt).getTime();
+    const eB = sB + (other.estimatedDuration || 60) * 60000;
+    return sA < eB && eA > sB;
+  });
 
   const handleStartEditing = () => {
     setSelectedTechId(job.assignedTechnicianId || "");
@@ -105,6 +118,26 @@ export function JobDetailModal({
         }
       }
       setError(err?.response?.data?.message || "Failed to reschedule job.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUnassignToQueue = async () => {
+    try {
+      setSubmitting(true);
+      setError(null);
+      const res = await apiClient.patch(`/jobs/${job.id}`, {
+        assignedTechnicianId: null,
+        scheduledAt: null,
+        status: "PENDING",
+      });
+      onJobUpdated(res.data);
+      setIsEditing(false);
+      onClose();
+    } catch (err: any) {
+      console.error("Failed to unassign job:", err);
+      setError(err?.response?.data?.message || "Failed to unassign job to queue.");
     } finally {
       setSubmitting(false);
     }
@@ -204,6 +237,66 @@ export function JobDetailModal({
           )}
         </div>
 
+        {/* Active Schedule Collision Banner */}
+        {conflictingJob && !isEditing && (
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-950 space-y-2.5 shadow-2xs animate-in fade-in duration-150">
+            <div className="flex items-start gap-2.5">
+              <div className="p-1.5 rounded-lg bg-rose-100 text-rose-700 shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-xs text-rose-900">
+                    Active Double-Booking Collision
+                  </h4>
+                  <span className="text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white px-1.5 py-0.5 rounded animate-pulse">
+                    Action Required
+                  </span>
+                </div>
+                <p className="text-[11px] text-rose-800 mt-1 leading-relaxed">
+                  This work order overlaps with <strong>&quot;{conflictingJob.title}&quot;</strong> (
+                  {new Date(conflictingJob.scheduledAt!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} –{" "}
+                  {new Date(new Date(conflictingJob.scheduledAt!).getTime() + (conflictingJob.estimatedDuration || 60) * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  ) on {job.assignedTechnician?.firstName || "this technician"}&apos;s schedule.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Conflict Resolution Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-rose-200/80">
+              <Button
+                size="sm"
+                onClick={handleStartEditing}
+                className="text-[11px] h-7 px-3 bg-rose-600 hover:bg-rose-700 text-white font-bold gap-1 shadow-xs cursor-pointer"
+              >
+                <Wrench className="w-3 h-3" />
+                <span>Reassign Technician</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleStartEditing}
+                className="text-[11px] h-7 px-3 bg-white hover:bg-rose-100/50 border-rose-200 text-rose-900 font-semibold gap-1 cursor-pointer"
+              >
+                <Clock className="w-3 h-3" />
+                <span>Reschedule Time</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleUnassignToQueue}
+                disabled={submitting}
+                className="text-[11px] h-7 px-3 bg-white hover:bg-rose-100/50 border-rose-200 text-rose-900 font-semibold gap-1 cursor-pointer"
+              >
+                <Send className="w-3 h-3" />
+                <span>{submitting ? "Moving..." : "Send to Unassigned Queue"}</span>
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Editing Mode */}
         {isEditing ? (
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in duration-150">
@@ -270,24 +363,36 @@ export function JobDetailModal({
               </select>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setIsEditing(false)}
-                className="text-xs h-8 px-3"
+                type="button"
+                onClick={handleUnassignToQueue}
                 disabled={submitting}
+                className="text-xs h-8 px-2.5 text-amber-800 border-amber-300 bg-amber-50 hover:bg-amber-100"
               >
-                Cancel
+                Send to Queue
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveReschedule}
-                disabled={submitting}
-                className="text-xs h-8 px-4 bg-[#006937] hover:bg-[#004D28] text-white font-bold"
-              >
-                {submitting ? "Checking & Saving..." : "Save Reschedule"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  className="text-xs h-8 px-3"
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveReschedule}
+                  disabled={submitting}
+                  className="text-xs h-8 px-4 bg-[#006937] hover:bg-[#004D28] text-white font-bold"
+                >
+                  {submitting ? "Checking & Saving..." : "Save Reschedule"}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
