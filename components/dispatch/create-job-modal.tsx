@@ -179,18 +179,41 @@ export function CreateJobModal({
           <label className="block font-semibold text-slate-700 mb-1">
             Client & Site Location <span className="text-rose-500">*</span>
           </label>
-          <select
-            value={customerRecordId}
-            onChange={(e) => setCustomerRecordId(e.target.value)}
-            required
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#006937]"
-          >
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} {c.address ? `• ${c.address}` : ""}
-              </option>
-            ))}
-          </select>
+          {loadingData ? (
+            <div className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-500 animate-pulse">
+              Loading client records...
+            </div>
+          ) : customers.length === 0 ? (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-center justify-between">
+              <div>
+                <span className="font-bold block">No customer records found.</span>
+                <span className="text-[11px] text-amber-700">A customer and site address is required to dispatch field service.</span>
+              </div>
+              <a
+                href="/app/customers"
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-900 text-[11px] font-bold rounded border border-amber-300 shadow-2xs shrink-0 inline-flex items-center gap-1"
+              >
+                <PlusCircle className="w-3 h-3 text-[#006937]" />
+                <span>Add Customer</span>
+              </a>
+            </div>
+          ) : (
+            <select
+              value={customerRecordId}
+              onChange={(e) => setCustomerRecordId(e.target.value)}
+              required
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#006937]"
+            >
+              <option value="" disabled>-- Select Client & Site Location --</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.address ? `• ${c.address}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Technician Assignment */}
