@@ -289,26 +289,74 @@ export interface Invoice {
   items?: QuoteItem[];
 }
 
+export type JobStatus =
+  | 'PENDING'
+  | 'SCHEDULED'
+  | 'EN_ROUTE'
+  | 'ARRIVED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
 export interface Job {
   id: string;
   tenantId: string;
-  customerId: string;
+  customerId?: string;
+  customerRecordId?: string;
   customer?: CustomerRecord;
+  customerRecord?: {
+    id?: string;
+    name: string;
+    address?: string | null;
+    city?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  };
   assetId?: string;
   asset?: Asset;
-  assignedTechnicianId?: string;
+  assignedTechnicianId?: string | null;
   technician?: User;
+  assignedTechnician?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    tradeSpecialty?: string;
+  } | null;
   title: string;
   description?: string;
-  status: 'SCHEDULED' | 'EN_ROUTE' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  scheduledStart: string;
-  scheduledEnd: string;
+  status: JobStatus;
+  scheduledAt?: string | null;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  estimatedDuration?: number; // duration in minutes
   actualStart?: string;
   actualEnd?: string;
   completionOtpHashed?: string;
+  completionOtp?: string;
   photos?: string[];
   signatureUrl?: string;
+  quoteId?: string | null;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Technician {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+  tradeSpecialty?: string;
+  isFieldTech?: boolean;
+  workingHours?: {
+    start: string;
+    end: string;
+  };
+  currentJobsCount?: number;
+  lastKnownLatitude?: number | null;
+  lastKnownLongitude?: number | null;
+  lastLocationUpdate?: string | null;
 }
 
 export interface Wallet {
