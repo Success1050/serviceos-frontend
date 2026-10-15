@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api/client";
 import Header from "@/components/layout/header";
@@ -97,11 +97,30 @@ export default function InventoryPage() {
     staleTime: 1000 * 15,
   });
 
-  // Separate warehouses by type
-  const hqWarehouses = warehouses.filter((w) => w.type === "HQ_WAREHOUSE");
-  const masterWarehouse = hqWarehouses.find((w) => w.name.toLowerCase().includes("master") || w.name.toLowerCase().includes("central")) || hqWarehouses[0] || null;
-  const regionalWarehouse = hqWarehouses.find((w) => w.id !== masterWarehouse?.id) || null;
-  const truckWarehouses = warehouses.filter((w) => w.type === "VIRTUAL_TRUCK");
+  // Separate warehouses by type with stable memoization
+  const hqWarehouses = useMemo(
+    () => warehouses.filter((w) => w.type === "HQ_WAREHOUSE"),
+    [warehouses]
+  );
+  const masterWarehouse = useMemo(
+    () =>
+      hqWarehouses.find(
+        (w) =>
+          w.name.toLowerCase().includes("master") ||
+          w.name.toLowerCase().includes("central")
+      ) ||
+      hqWarehouses[0] ||
+      null,
+    [hqWarehouses]
+  );
+  const regionalWarehouse = useMemo(
+    () => hqWarehouses.find((w) => w.id !== masterWarehouse?.id) || null,
+    [hqWarehouses, masterWarehouse]
+  );
+  const truckWarehouses = useMemo(
+    () => warehouses.filter((w) => w.type === "VIRTUAL_TRUCK"),
+    [warehouses]
+  );
 
   // 4. Fetch Master Warehouse Inventory
   const { data: masterItems = [] } = useQuery<InventoryItem[]>({
@@ -116,6 +135,7 @@ export default function InventoryPage() {
         return [];
       }
     },
+    staleTime: 1000 * 30,
   });
 
   // 5. Fetch Regional Warehouse Inventory
@@ -131,29 +151,35 @@ export default function InventoryPage() {
         return [];
       }
     },
+    staleTime: 1000 * 30,
   });
 
-  // 6. Fetch Truck Inventories (Map of truckId -> items)
-  const [truckInventories, setTruckInventories] = useState<Record<string, InventoryItem[]>>({});
+  // 6. Fetch Truck Inventories with React Query (cached & stable key)
+  const truckIdsKey = useMemo(
+    () => truckWarehouses.map((t) => t.id).sort().join(","),
+    [truckWarehouses]
+  );
 
-  React.useEffect(() => {
-    if (truckWarehouses.length > 0) {
-      Promise.all(
+  const { data: truckInventories = {} } = useQuery<Record<string, InventoryItem[]>>({
+    queryKey: ["truck-inventories", truckIdsKey],
+    enabled: truckWarehouses.length > 0,
+    queryFn: async () => {
+      const results = await Promise.all(
         truckWarehouses.map((t) =>
           apiClient
             .get(`/warehouses/${t.id}/inventory`)
             .then((res) => ({ id: t.id, items: Array.isArray(res.data) ? res.data : [] }))
             .catch(() => ({ id: t.id, items: [] }))
         )
-      ).then((results) => {
-        const map: Record<string, InventoryItem[]> = {};
-        results.forEach((r) => {
-          map[r.id] = r.items;
-        });
-        setTruckInventories(map);
+      );
+      const map: Record<string, InventoryItem[]> = {};
+      results.forEach((r) => {
+        map[r.id] = r.items;
       });
-    }
-  }, [truckWarehouses]);
+      return map;
+    },
+    staleTime: 1000 * 30,
+  });
 
   // Aggregate Metrics
   const masterTotalUnits = masterItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -190,6 +216,7 @@ export default function InventoryPage() {
     refetchWarehouses();
     refetchRequests();
     queryClient.invalidateQueries({ queryKey: ["warehouse-inventory"] });
+    queryClient.invalidateQueries({ queryKey: ["truck-inventories"] });
   };
 
   return (
