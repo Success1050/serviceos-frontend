@@ -4,6 +4,7 @@ import React from "react";
 import { useSocket } from "@/components/providers/socket-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useSidebar } from "@/components/providers/sidebar-provider";
+import { useNotifications } from "@/components/providers/notification-provider";
 import { Bell, Search, LogOut, Menu } from "lucide-react";
 
 interface HeaderProps {
@@ -16,6 +17,7 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
   const { isConnected } = useSocket();
   const { user, tenant, logout } = useAuth();
   const { toggleMobileMenu } = useSidebar();
+  const { unreadCount, openDrawer, isDrawerOpen } = useNotifications();
 
   return (
     <header className="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20">
@@ -74,11 +76,23 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
         {/* Notification Bell */}
         <button
           type="button"
-          className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-          title="Notifications"
+          onClick={openDrawer}
+          className={`relative p-2 rounded-xl transition-all ${
+            isDrawerOpen
+              ? "bg-[#006937]/10 text-[#006937]"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+          title={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}` : "Notifications"}
+          aria-label="Open notifications drawer"
         >
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#006937]" />
+          {unreadCount > 0 ? (
+            <span className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full bg-[#006937] text-white text-[10px] font-bold flex items-center justify-center shadow-sm border-2 border-white ring-1 ring-[#006937]/20">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          ) : (
+            <span className="sr-only">No unread notifications</span>
+          )}
         </button>
 
         {actions && <div className="flex items-center gap-2">{actions}</div>}
