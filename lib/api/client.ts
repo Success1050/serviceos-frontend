@@ -14,8 +14,12 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("serviceos_token");
-      if (token && config.headers) {
+      const isPortalRoute = window.location.pathname.startsWith("/s/");
+      const token = isPortalRoute
+        ? (localStorage.getItem("serviceos_customer_token") || localStorage.getItem("serviceos_token"))
+        : (localStorage.getItem("serviceos_token") || localStorage.getItem("serviceos_customer_token"));
+
+      if (token && config.headers && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
@@ -29,11 +33,21 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ message?: string | string[]; error?: string; statusCode?: number }>) => {
     if (typeof window !== "undefined" && error.response?.status === 401) {
-      // Don't auto-redirect if already on auth or public portal login pages
       const path = window.location.pathname;
       const isAuthPage = path.includes("/login") || path.includes("/register") || path.includes("/invite");
 
-      if (!isAuthPage) {
+      if (path.startsWith("/s/")) {
+        // Customer portal session handling
+        localStorage.removeItem("serviceos_customer_token");
+        localStorage.removeItem("serviceos_customer_context");
+        if (!isAuthPage) {
+          const match = path.match(/^\/s\/([^/]+)/);
+          const slug = match ? match[1] : "";
+          if (slug) {
+            window.location.href = `/s/${slug}/login?session_expired=true`;
+          }
+        }
+      } else if (!isAuthPage) {
         localStorage.removeItem("serviceos_token");
         localStorage.removeItem("serviceos_user");
         window.location.href = "/login?session_expired=true";

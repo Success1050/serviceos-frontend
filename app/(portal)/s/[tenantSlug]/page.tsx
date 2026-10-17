@@ -33,11 +33,31 @@ export default function TenantPortalHomePage() {
   // Interactive quick request state
   const [requestServiceType, setRequestServiceType] = useState("routine");
   const [requestSubmitted, setRequestSubmitted] = useState(false);
+  const [isCustomerLoggedIn, setIsCustomerLoggedIn] = useState(false);
+  const [customerName, setCustomerName] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     notes: "",
   });
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("serviceos_customer_token");
+      const ctx = localStorage.getItem("serviceos_customer_context");
+      if (token && ctx) {
+        setIsCustomerLoggedIn(true);
+        try {
+          const parsed = JSON.parse(ctx);
+          setCustomerName(parsed.customerName || "Customer");
+        } catch {
+          setCustomerName("Customer");
+        }
+      } else {
+        setIsCustomerLoggedIn(false);
+      }
+    }
+  }, []);
 
   const handleSubmitRequest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,19 +96,35 @@ export default function TenantPortalHomePage() {
 
             {/* Action buttons */}
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
-              <Link
-                href={`${basePath}/login`}
-                id="portal-hero-login-btn"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-semibold text-white shadow-md transition-all duration-200 hover:brightness-95 active:scale-[0.98] text-sm sm:text-base"
-                style={{
-                  backgroundColor: "var(--tenant-primary, #006937)",
-                  boxShadow: "0 4px 18px -4px var(--tenant-primary-glow, rgba(0,105,55,0.4))",
-                }}
-              >
-                <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>Customer Portal Login</span>
-                <ArrowRight className="w-4 h-4 ml-0.5" />
-              </Link>
+              {isCustomerLoggedIn ? (
+                <Link
+                  href={`${basePath}/dashboard`}
+                  id="portal-hero-dashboard-btn"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-semibold text-white shadow-md transition-all duration-200 hover:brightness-95 active:scale-[0.98] text-sm sm:text-base"
+                  style={{
+                    backgroundColor: "var(--tenant-primary, #006937)",
+                    boxShadow: "0 4px 18px -4px var(--tenant-primary-glow, rgba(0,105,55,0.4))",
+                  }}
+                >
+                  <Sun className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Go to My Dashboard ({customerName})</span>
+                  <ArrowRight className="w-4 h-4 ml-0.5" />
+                </Link>
+              ) : (
+                <Link
+                  href={`${basePath}/login`}
+                  id="portal-hero-login-btn"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-semibold text-white shadow-md transition-all duration-200 hover:brightness-95 active:scale-[0.98] text-sm sm:text-base"
+                  style={{
+                    backgroundColor: "var(--tenant-primary, #006937)",
+                    boxShadow: "0 4px 18px -4px var(--tenant-primary-glow, rgba(0,105,55,0.4))",
+                  }}
+                >
+                  <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Customer Portal Login</span>
+                  <ArrowRight className="w-4 h-4 ml-0.5" />
+                </Link>
+              )}
 
               <a
                 href="#request"
