@@ -77,8 +77,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           case "dispute":
             queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
             break;
+          case "customer":
+          case "invitation":
+            queryClient.invalidateQueries({ queryKey: ["customers"] });
+            break;
           case "notification":
             queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            queryClient.invalidateQueries({ queryKey: ["customers"] });
             break;
           default:
             queryClient.invalidateQueries({ queryKey: [entity] });
@@ -89,12 +94,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     s.on("connect", onConnect);
     s.on("disconnect", onDisconnect);
     s.on("realtime_update", onRealtimeEvent);
-    s.on("notification", () => queryClient.invalidateQueries({ queryKey: ["notifications"] }));
+    s.on("customer_updated", () => queryClient.invalidateQueries({ queryKey: ["customers"] }));
+    s.on("invitation_claimed", () => queryClient.invalidateQueries({ queryKey: ["customers"] }));
+    s.on("notification", () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    });
 
     return () => {
       s.off("connect", onConnect);
       s.off("disconnect", onDisconnect);
       s.off("realtime_update", onRealtimeEvent);
+      s.off("customer_updated");
+      s.off("invitation_claimed");
       s.off("notification");
     };
   }, [queryClient]);

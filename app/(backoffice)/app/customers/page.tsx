@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSocket } from "@/components/providers/socket-provider";
 import apiClient from "@/lib/api/client";
 import Header from "@/components/layout/header";
 import { CustomerRecord, PortalStatus } from "@/lib/types";
@@ -151,12 +152,39 @@ export default function CustomersPage() {
     plainToken: string;
   } | null>(null);
 
+  const { socket } = useSocket();
+
+  // Real-time synchronization: when a customer accepts invite or updates, refresh instantly without reload
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleCustomerSync = (payload?: any) => {
+      console.log("⚡ [Customers CRM] Real-time customer update received:", payload);
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    };
+
+    socket.on("customer_updated", handleCustomerSync);
+    socket.on("invitation_claimed", handleCustomerSync);
+    socket.on("realtime_update", handleCustomerSync);
+    socket.on("notification", handleCustomerSync);
+
+    return () => {
+      socket.off("customer_updated", handleCustomerSync);
+      socket.off("invitation_claimed", handleCustomerSync);
+      socket.off("realtime_update", handleCustomerSync);
+      socket.off("notification", handleCustomerSync);
+    };
+  }, [socket, queryClient]);
+
   // Fetch customers from API
   const { data, isLoading, refetch, isFetching } = useQuery<{
     items: CustomerRecord[];
     meta: { total: number; page: number; totalPages: number };
   }>({
     queryKey: ["customers", searchTerm, statusFilter, currentPage],
+    refetchInterval: 5000, // Background smart sync every 5 seconds so status changes dynamically
+    refetchOnWindowFocus: true, // Refresh instantly when window or tab gets focus
+    staleTime: 3000,
     queryFn: async () => {
       try {
         const params = new URLSearchParams();
