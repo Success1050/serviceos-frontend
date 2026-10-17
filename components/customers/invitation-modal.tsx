@@ -29,8 +29,22 @@ export function InvitationModal({
   const appBaseUrl =
     typeof window !== "undefined"
       ? window.location.origin
-      : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
-  const inviteUrl = `${appBaseUrl}/invite/${plainToken}`;
+      : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  let tenantSlug = "";
+  if (typeof window !== "undefined") {
+    try {
+      const storedUser = localStorage.getItem("serviceos_user");
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        tenantSlug = u.tenantSlug || u.tenant?.slug || "";
+      }
+    } catch {}
+  }
+
+  const inviteUrl = tenantSlug
+    ? `${appBaseUrl}/s/${tenantSlug}/invite/${plainToken}`
+    : `${appBaseUrl}/invite/${plainToken}`;
 
   const handleCopy = async () => {
     try {
