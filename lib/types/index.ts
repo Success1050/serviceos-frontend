@@ -592,3 +592,54 @@ export interface AppNotification {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// DAY 13: RECURRING MAINTENANCE & AUTOMATED CYCLES TYPES
+// ---------------------------------------------------------------------------
+
+export type MaintenanceScheduleStatus = "ACTIVE" | "PAUSED" | "CANCELLED";
+
+export interface MaintenanceSchedule {
+  id: string;
+  tenantId: string;
+  title: string;
+  intervalMonths: number;
+  nextDueDate: string;
+  status: MaintenanceScheduleStatus;
+  customerRecordId: string;
+  customerRecord?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    city?: string | null;
+  };
+  assetId?: string | null;
+  asset?: {
+    id: string;
+    name: string;
+    manufacturer?: string | null;
+    modelNumber?: string | null;
+    serialNumber?: string | null;
+  } | null;
+  currentJobId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMaintenanceSchedulePayload {
+  title: string;
+  intervalMonths: number;
+  firstDueDate: string;
+  customerRecordId: string;
+  assetId?: string;
+}
+
+export interface MaintenanceMetrics {
+  totalActiveContracts: number;
+  dueWithin30Days: number;
+  pausedContracts: number;
+  activeDispatchedJobs: number;
+}
+

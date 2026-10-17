@@ -15,6 +15,7 @@ import {
   Wrench,
   Package,
   Receipt,
+  RotateCcw,
   Headphones,
   UserCheck,
   Wallet,
@@ -87,6 +88,11 @@ export function Sidebar() {
       icon: <Receipt className="w-5 h-5 shrink-0" />,
     },
     {
+      label: "Maintenance",
+      href: "/app/maintenance",
+      icon: <RotateCcw className="w-5 h-5 shrink-0" />,
+    },
+    {
       label: "Support Desk",
       href: "/app/support",
       icon: <Headphones className="w-5 h-5 shrink-0" />,
@@ -147,16 +153,19 @@ export function Sidebar() {
         )}
       >
         {/* Mobile Header with Close Button */}
-        <div className="h-16 px-4 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-[#006937] flex items-center justify-center text-white font-bold shadow-xs shrink-0">
+        <div className="min-h-[72px] h-[72px] px-5 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0 pr-2">
+            <div className="w-10 h-10 rounded-xl bg-[#006937] flex items-center justify-center text-white font-bold shadow-xs shrink-0">
               <Building2 className="w-5 h-5" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-sm text-slate-900 truncate">
+              <span
+                className="font-bold text-sm text-slate-900 leading-tight line-clamp-2 break-words"
+                title={tenant?.name || "ServiceOS Enterprise"}
+              >
                 {tenant?.name || "ServiceOS Enterprise"}
               </span>
-              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded w-fit uppercase tracking-wider">
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded w-fit uppercase tracking-wider mt-1">
                 {user?.role?.replace(/_/g, " ") || "Tenant"}
               </span>
             </div>
@@ -164,7 +173,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={closeMobileMenu}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
             title="Close menu"
           >
             <X className="w-5 h-5" />
@@ -240,14 +249,14 @@ export function Sidebar() {
       <aside
         className={cn(
           "hidden lg:flex border-r border-slate-200 bg-white flex-col shrink-0 h-screen sticky top-0 select-none transition-all duration-300 ease-in-out",
-          isDesktopCollapsed ? "w-20" : "w-64"
+          isDesktopCollapsed ? "w-20" : "w-72 sm:w-[280px]"
         )}
       >
         {/* Brand Header */}
         <div
           className={cn(
-            "h-16 border-b border-slate-200 flex items-center transition-all",
-            isDesktopCollapsed ? "px-3 justify-center" : "px-4 justify-between"
+            "min-h-[72px] h-[72px] border-b border-slate-200 flex items-center transition-all",
+            isDesktopCollapsed ? "px-3 justify-center" : "px-4.5 sm:px-5 justify-between"
           )}
         >
           {isDesktopCollapsed ? (
@@ -261,15 +270,18 @@ export function Sidebar() {
             </button>
           ) : (
             <>
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-[#006937] flex items-center justify-center text-white font-bold shadow-xs shrink-0">
+              <div className="flex items-center gap-3 min-w-0 pr-1">
+                <div className="w-10 h-10 rounded-xl bg-[#006937] flex items-center justify-center text-white font-bold shadow-xs shrink-0">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="font-bold text-sm text-slate-900 truncate">
+                  <span
+                    className="font-bold text-sm text-slate-900 leading-tight line-clamp-2 break-words"
+                    title={tenant?.name || "ServiceOS Enterprise"}
+                  >
                     {tenant?.name || "ServiceOS Enterprise"}
                   </span>
-                  <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded w-fit uppercase tracking-wider">
+                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded w-fit uppercase tracking-wider mt-1">
                     {user?.role?.replace(/_/g, " ") || "Tenant"}
                   </span>
                 </div>
@@ -277,7 +289,7 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={toggleDesktopCollapse}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors shrink-0 ml-1"
                 title="Retract sidebar (shows icons only)"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -287,7 +299,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation List */}
-        <nav className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 sm:px-3.5 py-4 space-y-1.5 overflow-y-auto">
           {visibleNavItems.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
 
