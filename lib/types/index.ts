@@ -643,3 +643,5 @@ export interface MaintenanceMetrics {
   activeDispatchedJobs: number;
 }
 
+export * from './portal';
+
