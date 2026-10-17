@@ -84,7 +84,7 @@ export function NotificationDrawer({
     if (t.includes("PAY") || t.includes("SETTLE") || t.includes("INVOICE")) return "PAYMENT";
     if (t.includes("QUOTE")) return "QUOTE";
     if (t.includes("JOB") || t.includes("DISPATCH") || t.includes("TRUCK")) return "JOB";
-    if (t.includes("SUPPORT") || t.includes("DISPUTE") || t.includes("WARRANTY")) return "SUPPORT";
+    if (t.includes("SUPPORT") || t.includes("DISPUTE") || t.includes("WARRANTY") || t.includes("SERVICE") || t.includes("REQUEST")) return "SUPPORT";
     return "SYSTEM";
   };
 

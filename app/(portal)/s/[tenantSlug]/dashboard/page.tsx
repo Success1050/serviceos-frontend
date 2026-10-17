@@ -30,6 +30,7 @@ import {
   MapPin,
   Check,
   X,
+  BellRing,
 } from "lucide-react";
 
 interface DashboardData {
@@ -100,6 +101,27 @@ interface DashboardData {
       status: string;
     }>;
   }>;
+  serviceRequests?: Array<{
+    id: string;
+    description: string;
+    status: string;
+    urgency: string;
+    preferredDate?: string;
+    preferredTimeSlot?: string;
+    createdAt: string;
+    updatedAt: string;
+    asset?: {
+      id: string;
+      name: string;
+      serialNumber?: string;
+    } | null;
+    job?: {
+      id: string;
+      title: string;
+      status: string;
+      scheduledAt?: string;
+    } | null;
+  }>;
 }
 
 interface PageProps {
@@ -141,6 +163,26 @@ export default function CustomerDashboardPage({ params }: PageProps) {
   const [selectedReportJob, setSelectedReportJob] = useState<any | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
 
+  // Service Request Reminders
+  const [remindingId, setRemindingId] = useState<string | null>(null);
+  const [remindedIds, setRemindedIds] = useState<Record<string, boolean>>({});
+  const [reminderToast, setReminderToast] = useState<string | null>(null);
+
+  const handleRemindRequest = async (requestId: string) => {
+    setRemindingId(requestId);
+    try {
+      await apiClient.post(`/portal/${slug}/service-requests/${requestId}/remind`);
+      setRemindedIds((prev) => ({ ...prev, [requestId]: true }));
+      setReminderToast("Contractor dispatch team has been notified with high priority!");
+      fetchDashboard();
+    } catch (err: any) {
+      console.error("Failed to send reminder:", err);
+      setReminderToast("Failed to send reminder. Please try again or call dispatch.");
+    } finally {
+      setRemindingId(null);
+    }
+  };
+
   // Fetch Dashboard Data
   const fetchDashboard = async () => {
     setIsLoading(true);
@@ -179,10 +221,13 @@ export default function CustomerDashboardPage({ params }: PageProps) {
     setServiceSubmitting(true);
     setServiceError(null);
     try {
+      const fullDescription = serviceForm.description
+        ? `${serviceForm.title}: ${serviceForm.description}`
+        : serviceForm.title;
+
       await apiClient.post(`/portal/${slug}/service-requests`, {
-        title: serviceForm.title,
-        description: serviceForm.description || `Customer requested ${serviceForm.category} via self-serve portal.`,
-        priority: "MEDIUM",
+        description: fullDescription,
+        urgency: "NORMAL",
         preferredDate: serviceForm.preferredDate || undefined,
         assetId: data?.assets[0]?.id || undefined,
       });
@@ -251,10 +296,35 @@ export default function CustomerDashboardPage({ params }: PageProps) {
     })} at ${d.toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}`;
   };
 
+  const formatRelativeTime = (dateStr?: string) => {
+    if (!dateStr) return "Recently";
+    try {
+      const now = new Date();
+      const past = new Date(dateStr);
+      const diffMs = now.getTime() - past.getTime();
+      const diffSecs = Math.floor(diffMs / 1000);
+      const diffMins = Math.floor(diffSecs / 60);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffSecs < 45) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays === 1) return "Yesterday";
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return past.toLocaleDateString("en-NG", { month: "short", day: "numeric" });
+    } catch {
+      return "Recently";
+    }
+  };
+
   // Calculations
   const primaryAsset = data?.assets?.[0];
   const upcomingJob = data?.jobs?.find((j) => j.status === "SCHEDULED" || j.status === "EN_ROUTE");
   const pastJobs = data?.jobs?.filter((j) => j.status === "COMPLETED") || [];
+
+  const serviceRequests = data?.serviceRequests || [];
+  const pendingRequests = serviceRequests.filter((r) => r.status === "OPEN");
 
   const outstandingInvoices = data?.invoices?.filter((inv) => inv.status === "SENT" || inv.status === "OVERDUE") || [];
   const totalOutstanding = outstandingInvoices.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
@@ -362,10 +432,24 @@ export default function CustomerDashboardPage({ params }: PageProps) {
           </div>
 
           {/* Quick Metrics Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-8 pt-6 border-t border-slate-100">
             <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/60">
               <p className="text-xs text-slate-500 font-medium">Installed Systems</p>
               <p className="text-lg font-bold text-slate-900 mt-0.5">{data.assets.length || 1} System</p>
+            </div>
+
+            <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/60">
+              <p className="text-xs text-slate-500 font-medium">Pending Requests</p>
+              <p className={`text-lg font-bold mt-0.5 flex items-center gap-1.5 ${pendingRequests.length > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                {pendingRequests.length > 0 ? (
+                  <>
+                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>{pendingRequests.length} Pending</span>
+                  </>
+                ) : (
+                  "0 Pending"
+                )}
+              </p>
             </div>
 
             <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/60">
@@ -382,7 +466,7 @@ export default function CustomerDashboardPage({ params }: PageProps) {
               </p>
             </div>
 
-            <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/60">
+            <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/60 col-span-2 sm:col-span-1">
               <p className="text-xs text-slate-500 font-medium">Active Warranty</p>
               <p className="text-lg font-bold text-emerald-600 mt-0.5 flex items-center gap-1">
                 <ShieldCheck className="w-4 h-4" />
@@ -657,6 +741,231 @@ export default function CustomerDashboardPage({ params }: PageProps) {
             </div>
           </div>
         </div>
+
+        {/* ROW: ACTIVE SERVICE REQUESTS & DISPATCH QUEUE */}
+        <section id="service-requests-section" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-5 border-b border-slate-100 gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+                style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+              >
+                <BellRing className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                    My Service Requests & Inquiries
+                  </h2>
+                  {pendingRequests.length > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                      {pendingRequests.length} Awaiting Response
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500">
+                  Track your submitted service tickets, dispatch status, and nudge contractor dispatch if unanswered
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsServiceModalOpen(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-xs transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer"
+                style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Request</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Inline notification banner when a reminder is dispatched */}
+          {reminderToast && (
+            <div className="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-900 flex items-center justify-between animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{reminderToast}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReminderToast(null)}
+                className="text-emerald-700 hover:text-emerald-900 text-xs font-bold"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {serviceRequests.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              {serviceRequests.map((req) => {
+                const isPending = req.status === "OPEN";
+                const isDispatched = req.status === "IN_PROGRESS";
+                const isResolved = req.status === "RESOLVED" || req.status === "CLOSED";
+                const isReminded = remindedIds[req.id];
+
+                return (
+                  <div
+                    key={req.id}
+                    className={`p-4 sm:p-5 rounded-xl border transition-all flex flex-col justify-between gap-4 ${
+                      isPending
+                        ? "bg-amber-50/20 border-amber-200/80 hover:border-amber-300"
+                        : isDispatched
+                        ? "bg-blue-50/20 border-blue-200/80 hover:border-blue-300"
+                        : "bg-slate-50/50 border-slate-200/70"
+                    }`}
+                  >
+                    <div className="space-y-2.5">
+                      {/* Top Badges & Time */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isPending && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <Clock className="w-3 h-3 animate-spin-slow" />
+                              Awaiting Response
+                            </span>
+                          )}
+                          {isDispatched && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                              <Wrench className="w-3 h-3" />
+                              Technician Assigned
+                            </span>
+                          )}
+                          {isResolved && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Resolved
+                            </span>
+                          )}
+
+                          {req.urgency === "EMERGENCY" && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                              🚨 Emergency
+                            </span>
+                          )}
+                          {req.urgency === "URGENT" && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200">
+                              ⚡ Urgent
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-[11px] text-slate-400 font-medium shrink-0">
+                          {formatRelativeTime(req.createdAt)}
+                        </span>
+                      </div>
+
+                      {/* Request Description */}
+                      <p className="text-sm font-semibold text-slate-900 leading-snug">
+                        {req.description}
+                      </p>
+
+                      {/* Associated details */}
+                      <div className="space-y-1 text-xs text-slate-600 pt-1 border-t border-slate-100">
+                        {req.preferredDate && (
+                          <div className="flex items-center gap-1.5 text-slate-500">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <span>
+                              Requested Date:{" "}
+                              <strong className="text-slate-700 font-medium">{formatDate(req.preferredDate)}</strong>
+                            </span>
+                          </div>
+                        )}
+                        {req.asset && (
+                          <div className="flex items-center gap-1.5 text-slate-500">
+                            <Sun className="w-3.5 h-3.5 text-slate-400" />
+                            <span>
+                              Asset:{" "}
+                              <strong className="text-slate-700 font-medium">{req.asset.name}</strong>
+                              {req.asset.serialNumber && ` (${req.asset.serialNumber})`}
+                            </span>
+                          </div>
+                        )}
+                        {req.job && (
+                          <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50/60 p-2 rounded-lg border border-blue-100 mt-1">
+                            <Wrench className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span>
+                              Scheduled Job: <strong>{req.job.title}</strong>{" "}
+                              {req.job.scheduledAt && `(${formatDateTime(req.job.scheduledAt)})`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer / Remind Button */}
+                    <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-3">
+                      <span className="text-[11px] text-slate-400">
+                        Ticket Ref: #{req.id.slice(0, 8)}
+                      </span>
+
+                      {isPending ? (
+                        isReminded ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            Reminder Dispatched
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleRemindRequest(req.id)}
+                            disabled={remindingId === req.id}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition-all shadow-xs hover:brightness-95 active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                            style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+                            title="Send an urgent nudge notification to the contractor dispatch queue"
+                          >
+                            {remindingId === req.id ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span>Reminding...</span>
+                              </>
+                            ) : (
+                              <>
+                                <BellRing className="w-3.5 h-3.5" />
+                                <span>Remind Contractor</span>
+                              </>
+                            )}
+                          </button>
+                        )
+                      ) : isDispatched ? (
+                        <span className="text-xs text-blue-700 font-medium flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-blue-600" />
+                          Dispatch in progress
+                        </span>
+                      ) : (
+                        <span className="text-xs text-emerald-700 font-medium flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Request Completed
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-10 text-center text-slate-500 mt-2">
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                <Wrench className="w-6 h-6 stroke-[1.5]" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">No Pending Service Requests</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                Your solar system is running smoothly. If you notice lower solar yield, battery warnings, or need panel cleaning, submit a request anytime.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsServiceModalOpen(true)}
+                className="mt-3.5 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:underline cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Submit Service Request</span>
+              </button>
+            </div>
+          )}
+        </section>
 
         {/* ROW 2: FINANCIAL SUMMARY & BILLING (ID for smooth scroll) */}
         <section id="billing-section" className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
