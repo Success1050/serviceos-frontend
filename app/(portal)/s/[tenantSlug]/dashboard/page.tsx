@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTenantPortal } from "@/components/portal";
+import { useTenantPortal, ServiceReportModal } from "@/components/portal";
 import apiClient from "@/lib/api/client";
 import {
   Sun,
@@ -135,6 +135,11 @@ export default function CustomerDashboardPage({ params }: PageProps) {
   const [payingInvoice, setPayingInvoice] = useState<any | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Service Completion Report Modal
+  const [selectedReportJob, setSelectedReportJob] = useState<any | null>(null);
+  const [serviceError, setServiceError] = useState<string | null>(null);
 
   // Fetch Dashboard Data
   const fetchDashboard = async () => {
@@ -172,6 +177,7 @@ export default function CustomerDashboardPage({ params }: PageProps) {
     if (!serviceForm.title) return;
 
     setServiceSubmitting(true);
+    setServiceError(null);
     try {
       await apiClient.post(`/portal/${slug}/service-requests`, {
         title: serviceForm.title,
@@ -185,11 +191,12 @@ export default function CustomerDashboardPage({ params }: PageProps) {
       setTimeout(() => {
         setIsServiceModalOpen(false);
         setServiceSuccess(false);
+        setServiceError(null);
         setServiceForm({ category: "ROUTINE_MAINTENANCE", title: "", description: "", preferredDate: "" });
         fetchDashboard();
       }, 1500);
     } catch (err: any) {
-      alert(err.message || "Failed to submit service request");
+      setServiceError(err.message || "Failed to submit service request. Please try again.");
     } finally {
       setServiceSubmitting(false);
     }
@@ -199,6 +206,7 @@ export default function CustomerDashboardPage({ params }: PageProps) {
   const handlePayInvoice = async () => {
     if (!payingInvoice) return;
     setPaymentProcessing(true);
+    setPaymentError(null);
 
     try {
       // Mock payment simulation
@@ -207,10 +215,11 @@ export default function CustomerDashboardPage({ params }: PageProps) {
       setTimeout(() => {
         setPayingInvoice(null);
         setPaymentSuccess(false);
+        setPaymentError(null);
         fetchDashboard();
       }, 1800);
     } catch (err: any) {
-      alert(err.message || "Payment processing failed");
+      setPaymentError(err.message || "Payment processing failed. Please verify your payment details.");
     } finally {
       setPaymentProcessing(false);
     }
@@ -832,10 +841,8 @@ export default function CustomerDashboardPage({ params }: PageProps) {
                         </span>
 
                         <button
-                          onClick={() => {
-                            alert(`Generating PDF Completion Report for: ${job.title}`);
-                          }}
-                          className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+                          onClick={() => setSelectedReportJob(job)}
+                          className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>Download Report (PDF)</span>
@@ -881,6 +888,11 @@ export default function CustomerDashboardPage({ params }: PageProps) {
               </div>
             ) : (
               <form onSubmit={handleCreateServiceRequest} className="space-y-4 text-xs">
+                {serviceError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
+                    {serviceError}
+                  </div>
+                )}
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Service Type</label>
                   <select
@@ -978,6 +990,12 @@ export default function CustomerDashboardPage({ params }: PageProps) {
               </div>
             ) : (
               <div className="space-y-4 text-xs">
+                {paymentError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
+                    {paymentError}
+                  </div>
+                )}
+
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                   <p className="text-slate-500 font-medium">Invoice</p>
                   <h4 className="text-sm font-bold text-slate-900">{payingInvoice.title}</h4>
@@ -1025,6 +1043,19 @@ export default function CustomerDashboardPage({ params }: PageProps) {
           </div>
         </div>
       )}
+
+      {/* MODAL 3: SERVICE COMPLETION REPORT MODAL */}
+      <ServiceReportModal
+        isOpen={!!selectedReportJob}
+        onClose={() => setSelectedReportJob(null)}
+        job={selectedReportJob}
+        customerName={data.profile.name}
+        customerAddress={data.profile.address}
+        tenantName={data.tenantName}
+        logoUrl={theme.logoUrl}
+        primaryColor={theme.primaryColor}
+        asset={data.assets?.[0]}
+      />
     </div>
   );
 }
