@@ -497,3 +497,98 @@ export interface EquipmentRequest {
   createdAt: string;
   updatedAt?: string;
 }
+
+// ------------------------------------------------------
+// DAY 11: FIELD EXPENSES, RECEIPT OCR & REIMBURSEMENTS
+// ------------------------------------------------------
+
+export type ExpenseStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+
+export type ExpenseCategory =
+  | 'MATERIALS_PARTS'
+  | 'TOOLS_HARDWARE'
+  | 'TRANSPORT_FUEL'
+  | 'EMERGENCY_PERMIT'
+  | 'OTHER';
+
+export interface ExpenseReceipt {
+  id: string;
+  tenantId: string;
+  jobId: string;
+  job?: {
+    id: string;
+    title: string;
+    status?: string;
+    customerRecord?: {
+      id: string;
+      name: string;
+      phone?: string;
+    };
+  };
+  technicianId: string;
+  technician?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string;
+  };
+  amount: number | string;
+  receiptPhotoUrl: string;
+  category?: string;
+  vendor?: string;
+  notes?: string;
+  rejectionReason?: string;
+  billToClient: boolean;
+  reviewedAt?: string;
+  reviewedById?: string;
+  status: ExpenseStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ExpenseMetrics {
+  totalCount: number;
+  pendingCount: number;
+  pendingAmount: number;
+  approvedCount: number;
+  approvedAmount: number;
+  rejectedCount: number;
+  rejectedAmount: number;
+}
+
+export interface CreateExpensePayload {
+  jobId: string;
+  technicianId?: string;
+  amount: number;
+  receiptPhotoUrl: string;
+  category?: string;
+  vendor?: string;
+  notes?: string;
+  billToClient?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// DAY 12: REAL-TIME NOTIFICATION TYPES
+// ---------------------------------------------------------------------------
+
+export type NotificationCategory =
+  | "ALL"
+  | "QUOTE"
+  | "PAYMENT"
+  | "JOB"
+  | "SUPPORT"
+  | "SYSTEM";
+
+export interface AppNotification {
+  id: string;
+  tenantId: string;
+  userId?: string | null;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  linkUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -14,6 +14,7 @@ import {
   CreditCard,
   Wrench,
   Package,
+  Receipt,
   Headphones,
   UserCheck,
   Wallet,
@@ -79,6 +80,11 @@ export function Sidebar() {
       label: "Inventory & Warehouses",
       href: "/app/inventory",
       icon: <Package className="w-5 h-5 shrink-0" />,
+    },
+    {
+      label: "Field Expenses",
+      href: "/app/expenses",
+      icon: <Receipt className="w-5 h-5 shrink-0" />,
     },
     {
       label: "Support Desk",
