@@ -25,7 +25,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("serviceos_token") : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("serviceos_token") || localStorage.getItem("serviceos_customer_token")
+        : null;
     if (!token) return;
 
     const s = getSocket(token);
@@ -56,14 +59,23 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           case "dispatch":
             queryClient.invalidateQueries({ queryKey: ["jobs"] });
             queryClient.invalidateQueries({ queryKey: ["dispatch"] });
+            queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+            queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
+            break;
+          case "service-request":
+          case "servicerequest":
+            queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+            queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
             break;
           case "quote":
             queryClient.invalidateQueries({ queryKey: ["quotes"] });
+            queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
             break;
           case "invoice":
           case "payment":
             queryClient.invalidateQueries({ queryKey: ["invoices"] });
             queryClient.invalidateQueries({ queryKey: ["payments"] });
+            queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
             break;
           case "wallet":
           case "payout":
@@ -76,6 +88,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           case "warranty":
           case "dispute":
             queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+            queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
             break;
           case "customer":
           case "invitation":
@@ -84,6 +97,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           case "notification":
             queryClient.invalidateQueries({ queryKey: ["notifications"] });
             queryClient.invalidateQueries({ queryKey: ["customers"] });
+            queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+            queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
             break;
           default:
             queryClient.invalidateQueries({ queryKey: [entity] });
@@ -99,6 +114,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     s.on("notification", () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
     });
 
     return () => {

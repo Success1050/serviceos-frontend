@@ -10,7 +10,10 @@ export function getSocket(token?: string): Socket {
       autoConnect: false,
       transports: ["websocket", "polling"],
       auth: (cb) => {
-        const storedToken = typeof window !== "undefined" ? localStorage.getItem("serviceos_token") : null;
+        const storedToken =
+          typeof window !== "undefined"
+            ? localStorage.getItem("serviceos_token") || localStorage.getItem("serviceos_customer_token")
+            : null;
         cb({ token: token || storedToken });
       },
     });

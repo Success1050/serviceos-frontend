@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSocket } from "@/components/providers/socket-provider";
 import { useTenantPortal, ServiceReportModal } from "@/components/portal";
 import apiClient from "@/lib/api/client";
 import {
@@ -143,9 +145,8 @@ export default function CustomerDashboardPage({ params }: PageProps) {
   const router = useRouter();
   const { tenant, theme } = useTenantPortal();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
 
   // Active section tab for mobile/desktop quick navigation
   const [activeTab, setActiveTab] = useState<"overview" | "equipment" | "schedule" | "billing" | "history">("overview");
@@ -175,13 +176,66 @@ export default function CustomerDashboardPage({ params }: PageProps) {
   const [remindedIds, setRemindedIds] = useState<Record<string, boolean>>({});
   const [reminderToast, setReminderToast] = useState<string | null>(null);
 
+  // TanStack Query for Customer Portal Dashboard
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<DashboardData>({
+    queryKey: ["portal-dashboard", slug],
+    queryFn: async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("serviceos_customer_token") : null;
+      if (!token) {
+        router.push(`/s/${slug}/login?redirect=/s/${slug}/dashboard`);
+        throw new Error("Unauthenticated");
+      }
+      try {
+        const res = await apiClient.get(`/portal/${slug}/dashboard`);
+        return res.data;
+      } catch (err: any) {
+        if (err.status === 401) {
+          router.push(`/s/${slug}/login?session_expired=true`);
+        }
+        throw err;
+      }
+    },
+    enabled: !!slug,
+    staleTime: 1000 * 30, // 30s fresh
+  });
+
+  const errorMessage = isError ? (error as any)?.message || "Failed to load customer dashboard" : null;
+
+  // Realtime WebSocket Subscription: instant reactive updates with ZERO polling
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRealtimeUpdate = (payload: any) => {
+      console.log("⚡ [WebSocket Portal Dashboard] Invalidating query on realtime event:", payload);
+      queryClient.invalidateQueries({ queryKey: ["portal-dashboard", slug] });
+    };
+
+    socket.on("realtime_update", handleRealtimeUpdate);
+    socket.on("service_request_updated", handleRealtimeUpdate);
+    socket.on("job_dispatched", handleRealtimeUpdate);
+    socket.on("notification", handleRealtimeUpdate);
+
+    return () => {
+      socket.off("realtime_update", handleRealtimeUpdate);
+      socket.off("service_request_updated", handleRealtimeUpdate);
+      socket.off("job_dispatched", handleRealtimeUpdate);
+      socket.off("notification", handleRealtimeUpdate);
+    };
+  }, [socket, slug, queryClient]);
+
   const handleRemindRequest = async (requestId: string) => {
     setRemindingId(requestId);
     try {
       await apiClient.post(`/portal/${slug}/service-requests/${requestId}/remind`);
       setRemindedIds((prev) => ({ ...prev, [requestId]: true }));
       setReminderToast("Contractor dispatch team has been notified with high priority!");
-      fetchDashboard();
+      queryClient.invalidateQueries({ queryKey: ["portal-dashboard", slug] });
     } catch (err: any) {
       console.error("Failed to send reminder:", err);
       setReminderToast("Failed to send reminder. Please try again or call dispatch.");
@@ -189,40 +243,6 @@ export default function CustomerDashboardPage({ params }: PageProps) {
       setRemindingId(null);
     }
   };
-
-  // Fetch Dashboard Data
-  const fetchDashboard = async (silent = false) => {
-    if (!silent) setIsLoading(true);
-    setErrorMessage(null);
-
-    const token = typeof window !== "undefined" ? localStorage.getItem("serviceos_customer_token") : null;
-    if (!token) {
-      router.push(`/s/${slug}/login?redirect=/s/${slug}/dashboard`);
-      return;
-    }
-
-    try {
-      const res = await apiClient.get(`/portal/${slug}/dashboard`);
-      setData(res.data);
-    } catch (err: any) {
-      console.error("Dashboard fetch error:", err);
-      if (err.status === 401) {
-        router.push(`/s/${slug}/login?session_expired=true`);
-      } else if (!silent) {
-        setErrorMessage(err.message || "Failed to load customer dashboard");
-      }
-    } finally {
-      if (!silent) setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboard();
-    const interval = setInterval(() => {
-      fetchDashboard(true);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [slug]);
 
   // Submit quick service request
   const handleCreateServiceRequest = async (e: React.FormEvent) => {
@@ -249,7 +269,7 @@ export default function CustomerDashboardPage({ params }: PageProps) {
         setServiceSuccess(false);
         setServiceError(null);
         setServiceForm({ category: "ROUTINE_MAINTENANCE", title: "", description: "", preferredDate: "" });
-        fetchDashboard();
+        queryClient.invalidateQueries({ queryKey: ["portal-dashboard", slug] });
       }, 1500);
     } catch (err: any) {
       setServiceError(err.message || "Failed to submit service request. Please try again.");
@@ -272,7 +292,7 @@ export default function CustomerDashboardPage({ params }: PageProps) {
         setPayingInvoice(null);
         setPaymentSuccess(false);
         setPaymentError(null);
-        fetchDashboard();
+        queryClient.invalidateQueries({ queryKey: ["portal-dashboard", slug] });
       }, 1800);
     } catch (err: any) {
       setPaymentError(err.message || "Payment processing failed. Please verify your payment details.");

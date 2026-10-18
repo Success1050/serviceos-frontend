@@ -101,7 +101,6 @@ export default function DispatchPage() {
         return [];
       }
     },
-    refetchInterval: 8000,
     staleTime: 5000,
   });
 
