@@ -157,6 +157,7 @@ export default function CustomerLoginPage() {
             customerName,
           })
         );
+        window.dispatchEvent(new Event("auth:change"));
       }
 
       setVerifiedCustomerName(customerName);

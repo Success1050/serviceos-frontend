@@ -190,6 +190,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       // Invalidate to ensure sync with server
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["portal-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["service-requests"] });
     };
 
     socket.on("notification", handleNotificationEvent);

@@ -217,14 +217,16 @@ export default function CustomerDashboardPage({ params }: PageProps) {
     };
 
     socket.on("realtime_update", handleRealtimeUpdate);
-    socket.on("service_request_updated", handleRealtimeUpdate);
+    socket.on("job:assigned", handleRealtimeUpdate);
     socket.on("job_dispatched", handleRealtimeUpdate);
+    socket.on("service_request_updated", handleRealtimeUpdate);
     socket.on("notification", handleRealtimeUpdate);
 
     return () => {
       socket.off("realtime_update", handleRealtimeUpdate);
-      socket.off("service_request_updated", handleRealtimeUpdate);
+      socket.off("job:assigned", handleRealtimeUpdate);
       socket.off("job_dispatched", handleRealtimeUpdate);
+      socket.off("service_request_updated", handleRealtimeUpdate);
       socket.off("notification", handleRealtimeUpdate);
     };
   }, [socket, slug, queryClient]);
