@@ -115,22 +115,79 @@ export function ImportWizardModal({
     onClose();
   };
 
-  // Download Sample CSV template
-  const handleDownloadTemplate = () => {
-    const csvContent =
-      "Full Name,Mobile No.,Email Address,Installation Address,City\n" +
-      "Chief Adeleke,08031234567,adeleke@sunshine.com,Plot 14 Admiralty Way Lekki Phase 1,Lagos\n" +
-      "Dr. Ngozi Okonjo,08029876543,ngozi@horizon.org,12 Maitama Crescent,Abuja\n" +
-      "Green Valley Estate,08105556677,operations@greenvalley.ng,Km 42 Lekki-Epe Expressway,Lagos\n";
+  // Canonical backend-supported customer sample template records
+  const SAMPLE_CUSTOMER_RECORDS = [
+    {
+      "Customer Name": "Chief Adeleke Solarin",
+      "Phone Number": "08031234567",
+      "Email Address": "adeleke@sunshinesolar.ng",
+      "Installation Address": "Plot 14 Admiralty Way Lekki Phase 1",
+      "City": "Lagos",
+    },
+    {
+      "Customer Name": "Dr. Ngozi Okonjo",
+      "Phone Number": "08029876543",
+      "Email Address": "ngozi.okonjo@horizonenergy.org",
+      "Installation Address": "12 Maitama Crescent",
+      "City": "Abuja",
+    },
+    {
+      "Customer Name": "Green Valley Estate Facility Office",
+      "Phone Number": "08105556677",
+      "Email Address": "operations@greenvalley.ng",
+      "Installation Address": "Km 42 Lekki-Epe Expressway",
+      "City": "Lagos",
+    },
+    {
+      "Customer Name": "Kano Renewable Cold Storage Ltd",
+      "Phone Number": "08098765432",
+      "Email Address": "procurement@kanocold.com",
+      "Installation Address": "8 Bompai Industrial Area",
+      "City": "Kano",
+    },
+    {
+      "Customer Name": "Babatunde Fashola Homes",
+      "Phone Number": "08123456789",
+      "Email Address": "babatunde@fasholahomes.ng",
+      "Installation Address": "25 Isaac John Street GRA Ikeja",
+      "City": "Lagos",
+    },
+  ];
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "serviceos_customers_sample_template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Download Sample Template in either Excel (.xlsx) or CSV format
+  const handleDownloadTemplate = (format: "xlsx" | "csv" = "xlsx") => {
+    if (format === "xlsx") {
+      const worksheet = XLSX.utils.json_to_sheet(SAMPLE_CUSTOMER_RECORDS);
+      // Auto-set clean column widths for Excel spreadsheet
+      worksheet["!cols"] = [
+        { wch: 36 }, // Customer Name
+        { wch: 20 }, // Phone Number
+        { wch: 36 }, // Email Address
+        { wch: 42 }, // Installation Address
+        { wch: 18 }, // City
+      ];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
+      XLSX.writeFile(workbook, "serviceos_customer_import_template.xlsx");
+    } else {
+      const headers = Object.keys(SAMPLE_CUSTOMER_RECORDS[0]);
+      const csvRows = [
+        headers.join(","),
+        ...SAMPLE_CUSTOMER_RECORDS.map((row) =>
+          headers
+            .map((h) => `"${String(row[h as keyof typeof row] || "").replace(/"/g, '""')}"`)
+            .join(",")
+        ),
+      ];
+      const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "serviceos_customer_import_template.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   // 1. Handle File Upload and Parse
@@ -206,15 +263,16 @@ export function ImportWizardModal({
     const initialMapping: Record<string, string> = {};
     for (const header of fileHeaders) {
       const lower = header.toLowerCase().trim();
-      if (lower.includes("name") || lower.includes("client") || lower.includes("customer")) {
-        initialMapping[header] = "name";
-      } else if (lower.includes("phone") || lower.includes("mobile") || lower.includes("tel")) {
-        initialMapping[header] = "phone";
-      } else if (lower.includes("email") || lower.includes("mail")) {
+      // Explicit priority safeguards to prevent substring collisions (e.g., 'email address' vs 'address')
+      if (lower.includes("email") || lower.includes("e-mail") || lower === "mail") {
         initialMapping[header] = "email";
-      } else if (lower.includes("address") || lower.includes("street")) {
+      } else if (lower.includes("phone") || lower.includes("mobile") || lower.includes("tel") || lower.includes("contact no")) {
+        initialMapping[header] = "phone";
+      } else if (lower.includes("name") || lower.includes("client") || lower.includes("customer") || lower.includes("business")) {
+        initialMapping[header] = "name";
+      } else if (lower.includes("address") || lower.includes("street") || lower.includes("location") || lower.includes("site")) {
         initialMapping[header] = "address";
-      } else if (lower.includes("city") || lower.includes("state") || lower.includes("town")) {
+      } else if (lower.includes("city") || lower.includes("state") || lower.includes("town") || lower.includes("region") || lower.includes("lga")) {
         initialMapping[header] = "city";
       }
     }
@@ -376,16 +434,31 @@ export function ImportWizardModal({
             })}
           </div>
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleDownloadTemplate}
-            className="text-[11px] text-slate-500 hover:text-slate-800 gap-1 h-7"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Download Sample CSV
-          </Button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[11px] font-medium text-slate-400 hidden sm:inline">Sample:</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleDownloadTemplate("xlsx")}
+              className="text-[11px] font-semibold text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 hover:text-emerald-950 border-emerald-300/80 gap-1 h-7 px-2.5 shadow-2xs"
+              title="Download official Excel (.xlsx) customer template"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-700" />
+              Excel (.xlsx)
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDownloadTemplate("csv")}
+              className="text-[11px] text-slate-600 hover:text-slate-900 hover:bg-slate-100 gap-1 h-7 px-2"
+              title="Download official CSV (.csv) customer template"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              CSV (.csv)
+            </Button>
+          </div>
         </div>
 
         {/* Global Error Banner */}
@@ -396,14 +469,14 @@ export function ImportWizardModal({
           </div>
         )}
 
-        {/* STEP 1: UPLOAD */}
+            {/* STEP 1: UPLOAD */}
         {currentStep === "UPLOAD" && (
           <div className="space-y-4">
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-300 hover:border-[#006937] hover:bg-emerald-50/20 rounded-2xl p-10 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 group"
+              className="border-2 border-dashed border-slate-300 hover:border-[#006937] hover:bg-emerald-50/20 rounded-2xl p-9 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 group"
             >
               <input
                 ref={fileInputRef}
@@ -422,6 +495,78 @@ export function ImportWizardModal({
                 <p className="text-xs text-slate-500 mt-0.5">
                   Supports Excel (.xlsx, .xls) and Comma-Separated Values (.csv) up to 10MB
                 </p>
+              </div>
+            </div>
+
+            {/* Official Supported Template Download Box */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/50 via-slate-50 to-slate-50 border border-emerald-100/90 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-[#006937] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-slate-900">
+                        Official ServiceOS Customer Import Template
+                      </h4>
+                      <Badge variant="success" className="text-[10px] py-0 px-1.5 bg-emerald-100 text-[#006937] border-emerald-200 font-semibold">
+                        Backend Ready
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Download the official template pre-formatted with all 5 backend-supported fields. Edit it with your customer records and re-upload above.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadTemplate("xlsx")}
+                    className="text-xs font-semibold border-emerald-600/40 text-emerald-900 bg-white hover:bg-emerald-100/70 h-8 gap-1.5 shadow-2xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-700" />
+                    Download Excel (.xlsx)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadTemplate("csv")}
+                    className="text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 h-8 gap-1.5 bg-white"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    CSV (.csv)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Supported Columns Guide */}
+              <div className="pt-2.5 border-t border-slate-200/60 flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="font-semibold text-slate-600 mr-1">Supported Columns:</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 font-mono text-[10px] shadow-2xs">
+                  <span className="font-semibold">Customer Name</span>
+                  <span className="text-[9px] font-sans text-emerald-700 bg-emerald-50 px-1 rounded font-medium">Required</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 font-mono text-[10px] shadow-2xs">
+                  <span className="font-semibold">Phone Number</span>
+                  <span className="text-[9px] font-sans text-amber-700 bg-amber-50 px-1 rounded font-medium">Phone or Email</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800 font-mono text-[10px] shadow-2xs">
+                  <span className="font-semibold">Email Address</span>
+                  <span className="text-[9px] font-sans text-amber-700 bg-amber-50 px-1 rounded font-medium">Phone or Email</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-mono text-[10px] shadow-2xs">
+                  <span>Installation Address</span>
+                  <span className="text-[9px] font-sans text-slate-400 bg-slate-50 px-1 rounded">Optional</span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-mono text-[10px] shadow-2xs">
+                  <span>City</span>
+                  <span className="text-[9px] font-sans text-slate-400 bg-slate-50 px-1 rounded">Optional</span>
+                </span>
               </div>
             </div>
 
