@@ -6,7 +6,7 @@ import apiClient from "@/lib/api/client";
 import Header from "@/components/layout/header";
 import { StatCard, Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Badge, Button } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { DollarSign, Calendar, Users, Wrench, Plus, ArrowRight } from "lucide-react";
+import { DollarSign, Calendar, Users, Wrench, Plus, ArrowRight, Activity } from "lucide-react";
 import Link from "next/link";
 
 interface DashboardData {
@@ -108,12 +108,34 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="flex-1 pb-12">
-      <Header
-        title="Operations Overview"
-        subtitle="Real-time telemetry and service performance metrics"
-        actions={
-          <div className="flex items-center gap-2">
+    <div className="flex flex-col min-h-screen bg-slate-50/50 pb-12">
+      <Header />
+
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8">
+        {/* Top Header & Actions Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-[#006937] text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    Operations Overview
+                  </h1>
+                  <Badge variant="success" className="text-xs bg-emerald-50 text-[#006937] border-emerald-200">
+                    Live Operations
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time telemetry and service performance metrics
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
             <Link href="/app/dispatch">
               <Button size="sm" variant="outline" leftIcon={<Calendar className="w-4 h-4" />}>
                 Dispatch View
@@ -125,10 +147,8 @@ export default function DashboardPage() {
               </Button>
             </Link>
           </div>
-        }
-      />
+        </div>
 
-      <div className="p-8 space-y-8 max-w-7xl mx-auto">
         {/* Metric Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <StatCard
@@ -263,7 +283,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
