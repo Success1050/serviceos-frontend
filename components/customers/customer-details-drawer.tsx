@@ -34,6 +34,7 @@ interface CustomerDetailsDrawerProps {
   customer: CustomerRecord | null;
   onInviteGenerated: (plainToken: string) => void;
   onAddAsset?: (customer: CustomerRecord) => void;
+  onCreateQuote?: (customer: CustomerRecord) => void;
 }
 
 export function CustomerDetailsDrawer({
@@ -42,6 +43,7 @@ export function CustomerDetailsDrawer({
   customer,
   onInviteGenerated,
   onAddAsset,
+  onCreateQuote,
 }: CustomerDetailsDrawerProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "assets" | "activity">("overview");
   const [inviting, setInviting] = useState(false);
@@ -145,6 +147,19 @@ export function CustomerDetailsDrawer({
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                 {customer.portalStatus === "ACTIVE" ? "Regenerate Portal Token" : "Send Portal Invite"}
               </Button>
+              {onCreateQuote && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  onClick={() => onCreateQuote(customer)}
+                  className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5"
+                  title="Draft Commercial Quote"
+                >
+                  <FileText className="w-3.5 h-3.5 text-[#006937]" />
+                  <span>Draft Quote</span>
+                </Button>
+              )}
               {customer.phone && (
                 <a
                   href={`tel:${customer.phone}`}
@@ -155,6 +170,7 @@ export function CustomerDetailsDrawer({
                 </a>
               )}
             </div>
+
 
             {inviteError && (
               <p className="mt-2 text-xs text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-200">

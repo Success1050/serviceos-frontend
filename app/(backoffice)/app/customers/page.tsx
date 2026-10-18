@@ -24,6 +24,7 @@ import {
   InvitationModal,
 } from "@/components/customers";
 import { AddAssetModal } from "@/components/assets";
+import { QuoteBuilderModal } from "@/components/quotes";
 import {
   Users,
   UserPlus,
@@ -154,6 +155,8 @@ export default function CustomersPage() {
   } | null>(null);
   const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState(false);
   const [customerForAsset, setCustomerForAsset] = useState<CustomerRecord | null>(null);
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [customerForQuote, setCustomerForQuote] = useState<CustomerRecord | null>(null);
 
   const { socket } = useSocket();
 
@@ -516,6 +519,10 @@ export default function CustomersPage() {
           setCustomerForAsset(cust);
           setIsAddAssetModalOpen(true);
         }}
+        onCreateQuote={(cust) => {
+          setCustomerForQuote(cust);
+          setIsQuoteModalOpen(true);
+        }}
         onInviteGenerated={(token) => {
           if (activeCustomerForDrawer) {
             setInvitationModalData({
@@ -554,6 +561,22 @@ export default function CustomersPage() {
           queryClient.invalidateQueries({ queryKey: ["assets"] });
         }}
       />
+
+      {/* Commercial Quote Builder Modal from CRM */}
+      <QuoteBuilderModal
+        isOpen={isQuoteModalOpen}
+        onClose={() => {
+          setIsQuoteModalOpen(false);
+          setCustomerForQuote(null);
+        }}
+        preselectedCustomerId={customerForQuote?.id}
+        onQuoteCreated={() => {
+          refetch();
+          queryClient.invalidateQueries({ queryKey: ["customers"] });
+          queryClient.invalidateQueries({ queryKey: ["quotes"] });
+        }}
+      />
     </div>
   );
 }
+

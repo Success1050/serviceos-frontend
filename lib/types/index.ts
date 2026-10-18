@@ -231,6 +231,7 @@ export interface Quote {
   discountAmount?: number;
   taxAmount?: number;
   validUntil?: string;
+  notes?: string | null;
   createdAt: string;
   updatedAt?: string;
   _count?: {

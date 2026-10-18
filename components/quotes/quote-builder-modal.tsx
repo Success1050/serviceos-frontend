@@ -19,6 +19,11 @@ import {
   Calendar,
   Send,
   HelpCircle,
+  MapPin,
+  Phone,
+  Mail,
+  ShieldCheck,
+  Tag,
 } from "lucide-react";
 
 interface QuoteBuilderModalProps {
@@ -30,20 +35,27 @@ interface QuoteBuilderModalProps {
   initialQuote?: Quote | null;
 }
 
-const CATALOG_PRESETS: Array<{ description: string; unitPrice: number; category: QuoteLineItem["category"] }> = [
-  { description: "10kVA Hybrid Solar Inverter (Deye 48V)", unitPrice: 1850000, category: "EQUIPMENT" },
-  { description: "550W Tier-1 Mono Solar Panels (Pack of 10)", unitPrice: 1250000, category: "EQUIPMENT" },
-  { description: "15kWh Lithium FePO4 Storage Bank (Felicity 300Ah)", unitPrice: 2400000, category: "EQUIPMENT" },
-  { description: "DC Combiner Box, Surge Protectors & Breakers", unitPrice: 180000, category: "MATERIALS" },
-  { description: "Aluminum Rail Mounting Racks & Heavy-Duty Cabling", unitPrice: 220000, category: "MATERIALS" },
-  { description: "Certified Installation, Grounding & Commissioning Labor", unitPrice: 350000, category: "LABOR" },
-  { description: "Preventative Bi-Annual Service Plan (1 Year Coverage)", unitPrice: 150000, category: "LABOR" },
+const CATALOG_PRESETS: Array<{
+  description: string;
+  unitPrice: number;
+  category: QuoteLineItem["category"];
+  badge: string;
+}> = [
+  { description: "10kVA Hybrid Solar Inverter (Deye 48V)", unitPrice: 1850000, category: "EQUIPMENT", badge: "Inverter" },
+  { description: "5kVA Off-Grid Solar Inverter (Growatt SPF)", unitPrice: 980000, category: "EQUIPMENT", badge: "Inverter" },
+  { description: "550W Tier-1 Mono Solar Panels (Pack of 10 - Jinko)", unitPrice: 1250000, category: "EQUIPMENT", badge: "Solar PV" },
+  { description: "15kWh Lithium FePO4 Storage Bank (Felicity 300Ah)", unitPrice: 2400000, category: "EQUIPMENT", badge: "Battery" },
+  { description: "10kWh Wall-Mount Lithium Storage (Deye Powerwall)", unitPrice: 1950000, category: "EQUIPMENT", badge: "Battery" },
+  { description: "DC Combiner Box, Surge Protectors & AC Breakers", unitPrice: 180000, category: "MATERIALS", badge: "Switchgear" },
+  { description: "Aluminum Rail Mounting Racks & 16mm Grounding Cabling", unitPrice: 220000, category: "MATERIALS", badge: "Mounting" },
+  { description: "Certified Installation, Grounding & Commissioning Labor", unitPrice: 350000, category: "LABOR", badge: "Labor" },
+  { description: "Preventative Bi-Annual Service Plan (1 Year Coverage)", unitPrice: 150000, category: "LABOR", badge: "Maintenance" },
 ];
 
 const DEFAULT_TERMS = `1. Pricing validity: 14 days from issue date.
-2. Inverter carries a 5-year OEM warranty; Solar PV modules carry a 25-year performance warranty.
+2. Inverter carries a 5-year OEM warranty; Solar PV modules carry a 25-year performance warranty; Lithium batteries carry a 10-year cycle warranty.
 3. Client must grant roof and electrical distribution board access during the installation window.
-4. Final grid handover subject to sign-off and safety testing.`;
+4. Final grid handover and commissioning certificate issued subject to digital sign-off and safety testing.`;
 
 export function QuoteBuilderModal({
   isOpen,
@@ -58,14 +70,24 @@ export function QuoteBuilderModal({
 
   // Form State
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(preselectedCustomerId || "");
+  const [siteAddress, setSiteAddress] = useState<string>("");
   const [title, setTitle] = useState("Complete 10kVA Commercial Solar Installation Proposal");
   const [billingType, setBillingType] = useState<BillingType>("FIXED");
+  const [validityDays, setValidityDays] = useState<"7" | "14" | "30" | "CUSTOM">("14");
+  const [customValidDate, setCustomValidDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().split("T")[0];
+  });
+  const [scopeNotes, setScopeNotes] = useState<string>(
+    "Standard roof-mounted array with dedicated AC isolator switch and surge protection at main distribution panel."
+  );
   const [terms, setTerms] = useState(DEFAULT_TERMS);
 
   // Line Items
   const [lineItems, setLineItems] = useState<QuoteLineItem[]>([
     { description: "10kVA Hybrid Solar Inverter (Deye 48V)", quantity: 1, unitPrice: 1850000, total: 1850000, category: "EQUIPMENT" },
-    { description: "550W Tier-1 Mono Solar Panels (Pack of 10)", quantity: 1, unitPrice: 1250000, total: 1250000, category: "EQUIPMENT" },
+    { description: "550W Tier-1 Mono Solar Panels (Pack of 10 - Jinko)", quantity: 1, unitPrice: 1250000, total: 1250000, category: "EQUIPMENT" },
     { description: "15kWh Lithium FePO4 Storage Bank (Felicity 300Ah)", quantity: 1, unitPrice: 2400000, total: 2400000, category: "EQUIPMENT" },
     { description: "Certified Installation, Grounding & Commissioning Labor", quantity: 1, unitPrice: 350000, total: 350000, category: "LABOR" },
   ]);
@@ -84,6 +106,19 @@ export function QuoteBuilderModal({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Active selected customer details
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c) => c.id === selectedCustomerId) || null;
+  }, [customers, selectedCustomerId]);
+
+  // Update siteAddress when customer changes
+  useEffect(() => {
+    if (selectedCustomer && !siteAddress) {
+      const addr = [selectedCustomer.address, selectedCustomer.city].filter(Boolean).join(", ");
+      setSiteAddress(addr);
+    }
+  }, [selectedCustomer, siteAddress]);
 
   // Fetch customers if not provided
   useEffect(() => {
@@ -112,15 +147,33 @@ export function QuoteBuilderModal({
       setSelectedCustomerId(initialQuote.customerRecordId);
       setBillingType(initialQuote.billingType || "FIXED");
       if (initialQuote.termsAndConditions) setTerms(initialQuote.termsAndConditions);
+      if (initialQuote.items && initialQuote.items.length > 0) {
+        setLineItems(initialQuote.items);
+      }
+      if (initialQuote.validUntil) {
+        setCustomValidDate(initialQuote.validUntil.split("T")[0]);
+        setValidityDays("CUSTOM");
+      }
       if (initialQuote.milestones && initialQuote.milestones.length > 0) {
         setMilestones(initialQuote.milestones);
       }
     }
   }, [initialQuote]);
 
+  // Expiration calculation
+  const calculatedValidUntil = useMemo(() => {
+    if (validityDays === "CUSTOM") {
+      return customValidDate;
+    }
+    const days = parseInt(validityDays, 10) || 14;
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split("T")[0];
+  }, [validityDays, customValidDate]);
+
   // Pricing Calculations
   const subtotal = useMemo(() => {
-    return lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    return lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   }, [lineItems]);
 
   const discountAmount = useMemo(() => {
@@ -153,14 +206,26 @@ export function QuoteBuilderModal({
   const handleAddLineItem = () => {
     setLineItems((prev) => [
       ...prev,
-      { description: "Custom Solar Equipment / Service Item", quantity: 1, unitPrice: 100000, total: 100000, category: "EQUIPMENT" },
+      {
+        description: "Custom Solar Equipment / Service Item",
+        quantity: 1,
+        unitPrice: 100000,
+        total: 100000,
+        category: "EQUIPMENT",
+      },
     ]);
   };
 
-  const handleApplyCatalogPreset = (preset: typeof CATALOG_PRESETS[0]) => {
+  const handleApplyCatalogPreset = (preset: (typeof CATALOG_PRESETS)[0]) => {
     setLineItems((prev) => [
       ...prev,
-      { description: preset.description, quantity: 1, unitPrice: preset.unitPrice, total: preset.unitPrice, category: preset.category },
+      {
+        description: preset.description,
+        quantity: 1,
+        unitPrice: preset.unitPrice,
+        total: preset.unitPrice,
+        category: preset.category,
+      },
     ]);
   };
 
@@ -214,6 +279,16 @@ export function QuoteBuilderModal({
         customerRecordId: selectedCustomerId,
         billingType,
         termsAndConditions: terms,
+        items: lineItems,
+        subtotal,
+        discountAmount,
+        taxAmount: vatAmount,
+        validUntil: calculatedValidUntil,
+        notes: scopeNotes.trim()
+          ? `${scopeNotes.trim()}${siteAddress ? `\nSite Location: ${siteAddress}` : ""}`
+          : siteAddress
+          ? `Site Location: ${siteAddress}`
+          : undefined,
         milestones:
           billingType === "MILESTONE"
             ? milestones.map((m, idx) => ({
@@ -260,8 +335,8 @@ export function QuoteBuilderModal({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      title={initialQuote ? "Edit Proposal & Quote" : "Interactive Solar Quote Builder"}
-      description="Draft customized hardware line items, configure discounts & VAT, and build payment tranches."
+      title={initialQuote ? "Edit Commercial Proposal & Quote" : "Interactive Solar Quote Builder & Pricing Engine"}
+      description="Draft customized hardware line items, configure discounts & 7.5% VAT, set validity cycles, and structure milestone payment tranches."
       maxWidth="3xl"
     >
       <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
@@ -272,7 +347,7 @@ export function QuoteBuilderModal({
           </div>
         )}
 
-        {/* Client Selection & Proposal Title */}
+        {/* Client Selection & Project Title */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -282,11 +357,17 @@ export function QuoteBuilderModal({
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <select
                 value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedCustomerId(e.target.value);
+                  const c = customers.find((cust) => cust.id === e.target.value);
+                  if (c) {
+                    setSiteAddress([c.address, c.city].filter(Boolean).join(", "));
+                  }
+                }}
                 disabled={loadingCustomers}
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#006937]/20 focus:border-[#006937] transition-all"
               >
-                <option value="">-- Choose a customer --</option>
+                <option value="">-- Choose a registered customer --</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.city ? `(${c.city})` : ""} {c.phone ? `· ${c.phone}` : ""}
@@ -303,16 +384,52 @@ export function QuoteBuilderModal({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. 10kVA Residential Solar Hybrid Package"
+              placeholder="e.g. 10kVA Commercial Solar Hybrid Package"
               required
             />
           </div>
         </div>
 
+        {/* Selected Customer & Site Location Preview */}
+        {selectedCustomer && (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900">{selectedCustomer.name}</span>
+                {selectedCustomer.phone && (
+                  <span className="text-slate-500 flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-slate-400" /> {selectedCustomer.phone}
+                  </span>
+                )}
+                {selectedCustomer.email && (
+                  <span className="text-slate-500 flex items-center gap-1">
+                    <Mail className="w-3 h-3 text-slate-400" /> {selectedCustomer.email}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-slate-600">
+                <MapPin className="w-3.5 h-3.5 text-[#006937] shrink-0" />
+                <span className="font-medium">Site Address:</span>
+                <input
+                  type="text"
+                  value={siteAddress}
+                  onChange={(e) => setSiteAddress(e.target.value)}
+                  placeholder="Installation address (e.g. Plot 14, Admiralty Way, Lekki)"
+                  className="bg-white px-2 py-1 rounded border border-slate-200 text-xs text-slate-800 w-72 focus:outline-none focus:ring-1 focus:ring-[#006937]"
+                />
+              </div>
+            </div>
+
+            <div className="text-[11px] font-semibold text-[#006937] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 shrink-0">
+              ✓ CRM Linked
+            </div>
+          </div>
+        )}
+
         {/* Catalog Quick Insertion Presets */}
         <div>
           <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-            Catalog Item Presets (Click to insert)
+            Solar Equipment Catalog Presets (Click to insert item)
           </span>
           <div className="flex flex-wrap gap-1.5">
             {CATALOG_PRESETS.map((preset) => (
@@ -320,11 +437,14 @@ export function QuoteBuilderModal({
                 key={preset.description}
                 type="button"
                 onClick={() => handleApplyCatalogPreset(preset)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-[#006937] hover:border-emerald-200 transition-colors flex items-center gap-1"
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-[#006937] hover:border-emerald-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <Plus className="w-3 h-3 text-[#006937]" />
-                <span className="truncate max-w-[200px]">{preset.description.split("(")[0]}</span>
-                <span className="text-[10px] text-slate-400 font-mono">
+                <span className="text-[10px] font-bold uppercase px-1.5 py-0.2 rounded bg-slate-200 text-slate-700">
+                  {preset.badge}
+                </span>
+                <span className="truncate max-w-[170px]">{preset.description.split("(")[0]}</span>
+                <span className="text-[10px] text-slate-500 font-mono font-semibold">
                   {formatCurrency(preset.unitPrice)}
                 </span>
               </button>
@@ -344,7 +464,7 @@ export function QuoteBuilderModal({
               variant="outline"
               size="sm"
               onClick={handleAddLineItem}
-              className="text-xs h-7 gap-1 bg-white"
+              className="text-xs h-7 gap-1 bg-white cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Custom Item
@@ -353,7 +473,25 @@ export function QuoteBuilderModal({
 
           <div className="divide-y divide-slate-100">
             {lineItems.map((item, index) => (
-              <div key={index} className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center gap-3 hover:bg-slate-50/50 transition-colors">
+              <div
+                key={index}
+                className="p-3 flex flex-col sm:flex-row items-start sm:items-center gap-2.5 hover:bg-slate-50/50 transition-colors"
+              >
+                {/* Category selector */}
+                <div className="w-28 shrink-0">
+                  <select
+                    value={item.category || "EQUIPMENT"}
+                    onChange={(e) => handleUpdateItem(index, "category", e.target.value)}
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#006937]"
+                  >
+                    <option value="EQUIPMENT">Hardware</option>
+                    <option value="MATERIALS">Materials</option>
+                    <option value="LABOR">Labor</option>
+                    <option value="PERMIT">Permits/Fees</option>
+                  </select>
+                </div>
+
+                {/* Description */}
                 <div className="flex-1 w-full">
                   <Input
                     value={item.description}
@@ -363,8 +501,9 @@ export function QuoteBuilderModal({
                   />
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <div className="w-20">
+                {/* Quantity × Unit Price = Total */}
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                  <div className="w-16">
                     <Input
                       type="number"
                       min="1"
@@ -377,7 +516,7 @@ export function QuoteBuilderModal({
 
                   <span className="text-slate-400 text-xs">×</span>
 
-                  <div className="w-32">
+                  <div className="w-28">
                     <Input
                       type="number"
                       min="0"
@@ -389,14 +528,14 @@ export function QuoteBuilderModal({
                     />
                   </div>
 
-                  <div className="w-32 text-right font-mono font-bold text-xs text-slate-900 pr-1">
+                  <div className="w-28 text-right font-mono font-bold text-xs text-slate-900 pr-1">
                     {formatCurrency(item.quantity * item.unitPrice)}
                   </div>
 
                   <button
                     type="button"
                     onClick={() => handleRemoveItem(index)}
-                    className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors"
+                    className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                     title="Remove Item"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -407,14 +546,15 @@ export function QuoteBuilderModal({
           </div>
         </div>
 
-        {/* Pricing Summary & Discount Configuration */}
+        {/* Pricing Summary, Discounts & Validity */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
-          {/* Discount Controls & Tax Toggle */}
+          {/* Discount Controls & Validity */}
           <div className="space-y-3">
             <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-              Discounts & Taxes
+              Discounts, Tax & Validity Cycle
             </span>
 
+            {/* Discount selector */}
             <div className="flex items-center gap-2">
               <select
                 value={discountType}
@@ -440,6 +580,7 @@ export function QuoteBuilderModal({
               )}
             </div>
 
+            {/* Tax Checkbox */}
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer pt-1">
               <input
                 type="checkbox"
@@ -449,10 +590,45 @@ export function QuoteBuilderModal({
               />
               <span>Apply Standard Value Added Tax (VAT @ 7.5%)</span>
             </label>
+
+            {/* Expiration date picker */}
+            <div className="pt-2 border-t border-slate-200/70 space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                Quote Expiration Cycle (Validity)
+              </label>
+              <div className="flex items-center gap-1.5">
+                {(["7", "14", "30", "CUSTOM"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setValidityDays(opt)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
+                      validityDays === opt
+                        ? "bg-[#006937] text-white border-[#006937]"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    {opt === "CUSTOM" ? "Custom Date" : `${opt} Days`}
+                  </button>
+                ))}
+              </div>
+              {validityDays === "CUSTOM" ? (
+                <input
+                  type="date"
+                  value={customValidDate}
+                  onChange={(e) => setCustomValidDate(e.target.value)}
+                  className="mt-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-800"
+                />
+              ) : (
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Valid until: <strong className="text-slate-800">{calculatedValidUntil}</strong>
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Real-time Financial Breakdown */}
-          <div className="space-y-1.5 text-xs text-slate-600 divide-y divide-slate-200/60">
+          <div className="space-y-1.5 text-xs text-slate-600 divide-y divide-slate-200/60 flex flex-col justify-center">
             <div className="flex justify-between py-1">
               <span>Items Subtotal:</span>
               <span className="font-mono font-semibold text-slate-900">{formatCurrency(subtotal)}</span>
@@ -487,7 +663,7 @@ export function QuoteBuilderModal({
                 Billing Model & Payment Structure
               </span>
               <span className="text-[11px] text-slate-500">
-                Choose between single full payment or staged project tranche disbursements.
+                Choose between single lump-sum completion or staged project tranche disbursements.
               </span>
             </div>
 
@@ -495,7 +671,7 @@ export function QuoteBuilderModal({
               <button
                 type="button"
                 onClick={() => setBillingType("FIXED")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                   billingType === "FIXED"
                     ? "bg-[#006937] text-white border-[#006937] shadow-xs"
                     : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -506,7 +682,7 @@ export function QuoteBuilderModal({
               <button
                 type="button"
                 onClick={() => setBillingType("MILESTONE")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
                   billingType === "MILESTONE"
                     ? "bg-[#006937] text-white border-[#006937] shadow-xs"
                     : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -537,7 +713,10 @@ export function QuoteBuilderModal({
 
               <div className="space-y-2">
                 {milestones.map((m, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs"
+                  >
                     <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0">
                       {idx + 1}
                     </span>
@@ -584,6 +763,20 @@ export function QuoteBuilderModal({
           )}
         </div>
 
+        {/* Scope Notes & Technical Specifications */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            Engineering Scope Notes & Installation Site Requirements
+          </label>
+          <textarea
+            rows={2}
+            value={scopeNotes}
+            onChange={(e) => setScopeNotes(e.target.value)}
+            placeholder="e.g. Roof tilt angle, DB changeover switch capacity, earth resistance target (<5 ohms)"
+            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-sans text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#006937]/20 focus:border-[#006937] transition-all"
+          />
+        </div>
+
         {/* Terms & Conditions */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -599,13 +792,19 @@ export function QuoteBuilderModal({
 
         {/* Modal Sticky Bottom Actions */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white/95 backdrop-blur-xs py-3 -mx-6 px-6 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] mt-6">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading} className="text-xs font-semibold px-4 h-9">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+            className="text-xs font-semibold px-4 h-9 cursor-pointer"
+          >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={loading}
-            className="text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white h-9 px-4 shadow-sm"
+            className="text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white h-9 px-4 shadow-sm cursor-pointer"
           >
             {loading ? "Saving..." : "Save as Draft"}
           </Button>
@@ -613,7 +812,7 @@ export function QuoteBuilderModal({
             type="button"
             disabled={loading}
             onClick={(e) => handleSubmit(e, true)}
-            className="text-xs font-semibold bg-[#006937] hover:bg-[#004D28] text-white h-9 px-5 shadow-sm flex items-center gap-1.5"
+            className="text-xs font-semibold bg-[#006937] hover:bg-[#004D28] text-white h-9 px-5 shadow-sm flex items-center gap-1.5 cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Save & Send to Client</span>
