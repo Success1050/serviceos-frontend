@@ -25,6 +25,7 @@ import {
   Send,
   Sparkles,
   CheckCircle2,
+  PlusCircle,
 } from "lucide-react";
 
 interface CustomerDetailsDrawerProps {
@@ -32,6 +33,7 @@ interface CustomerDetailsDrawerProps {
   onClose: () => void;
   customer: CustomerRecord | null;
   onInviteGenerated: (plainToken: string) => void;
+  onAddAsset?: (customer: CustomerRecord) => void;
 }
 
 export function CustomerDetailsDrawer({
@@ -39,6 +41,7 @@ export function CustomerDetailsDrawer({
   onClose,
   customer,
   onInviteGenerated,
+  onAddAsset,
 }: CustomerDetailsDrawerProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "assets" | "activity">("overview");
   const [inviting, setInviting] = useState(false);
@@ -308,12 +311,23 @@ export function CustomerDetailsDrawer({
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Equipment ({customer.assets?.length || 0})
                   </span>
-                  <Link
-                    href="/app/assets"
-                    className="text-[11px] font-semibold text-[#006937] hover:underline flex items-center gap-1"
-                  >
-                    Open Asset Registry <ExternalLink className="w-3 h-3" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    {onAddAsset && (
+                      <button
+                        type="button"
+                        onClick={() => onAddAsset(customer)}
+                        className="text-[11px] font-semibold text-[#006937] hover:underline flex items-center gap-1"
+                      >
+                        <PlusCircle className="w-3 h-3" /> Register Asset
+                      </button>
+                    )}
+                    <Link
+                      href="/app/assets"
+                      className="text-[11px] font-medium text-slate-500 hover:text-slate-800 hover:underline flex items-center gap-1"
+                    >
+                      Registry <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
 
                 {customer.assets && customer.assets.length > 0 ? (
@@ -371,12 +385,23 @@ export function CustomerDetailsDrawer({
                       Solar arrays, hybrid inverters, or battery storage will appear here once
                       assigned.
                     </p>
-                    <Link
-                      href="/app/assets"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#006937] text-white hover:bg-[#004D28] transition-colors"
-                    >
-                      Go to Asset Registry
-                    </Link>
+                    <div className="flex items-center justify-center gap-2">
+                      {onAddAsset && (
+                        <Button
+                          type="button"
+                          onClick={() => onAddAsset(customer)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#006937] text-white hover:bg-[#004D28] transition-colors"
+                        >
+                          <PlusCircle className="w-3.5 h-3.5" /> Register Asset
+                        </Button>
+                      )}
+                      <Link
+                        href="/app/assets"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        Go to Registry
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>

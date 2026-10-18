@@ -23,6 +23,7 @@ import {
   ImportWizardModal,
   InvitationModal,
 } from "@/components/customers";
+import { AddAssetModal } from "@/components/assets";
 import {
   Users,
   UserPlus,
@@ -151,6 +152,8 @@ export default function CustomersPage() {
     email?: string;
     plainToken: string;
   } | null>(null);
+  const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState(false);
+  const [customerForAsset, setCustomerForAsset] = useState<CustomerRecord | null>(null);
 
   const { socket } = useSocket();
 
@@ -509,6 +512,10 @@ export default function CustomersPage() {
         isOpen={Boolean(activeCustomerForDrawer)}
         onClose={() => setActiveCustomerForDrawer(null)}
         customer={activeCustomerForDrawer}
+        onAddAsset={(cust) => {
+          setCustomerForAsset(cust);
+          setIsAddAssetModalOpen(true);
+        }}
         onInviteGenerated={(token) => {
           if (activeCustomerForDrawer) {
             setInvitationModalData({
@@ -532,6 +539,21 @@ export default function CustomersPage() {
           plainToken={invitationModalData.plainToken}
         />
       )}
+
+      {/* Add Hardware Asset Modal */}
+      <AddAssetModal
+        isOpen={isAddAssetModalOpen}
+        onClose={() => {
+          setIsAddAssetModalOpen(false);
+          setCustomerForAsset(null);
+        }}
+        preselectedCustomerId={customerForAsset?.id}
+        onAssetCreated={() => {
+          refetch();
+          queryClient.invalidateQueries({ queryKey: ["customers"] });
+          queryClient.invalidateQueries({ queryKey: ["assets"] });
+        }}
+      />
     </div>
   );
 }
