@@ -14,10 +14,18 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (typeof window !== "undefined") {
-      const isPortalRoute = window.location.pathname.startsWith("/s/");
-      const token = isPortalRoute
-        ? (localStorage.getItem("serviceos_customer_token") || localStorage.getItem("serviceos_token"))
-        : (localStorage.getItem("serviceos_token") || localStorage.getItem("serviceos_customer_token"));
+      const path = window.location.pathname;
+      const isTechRoute = path.startsWith("/tech");
+      const isPortalRoute = path.startsWith("/s/");
+
+      let token: string | null = null;
+      if (isTechRoute) {
+        token = localStorage.getItem("serviceos_tech_token") || localStorage.getItem("serviceos_token");
+      } else if (isPortalRoute) {
+        token = localStorage.getItem("serviceos_customer_token") || localStorage.getItem("serviceos_token");
+      } else {
+        token = localStorage.getItem("serviceos_token") || localStorage.getItem("serviceos_customer_token");
+      }
 
       if (token && config.headers && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -34,9 +42,20 @@ apiClient.interceptors.response.use(
   (error: AxiosError<{ message?: string | string[]; error?: string; statusCode?: number }>) => {
     if (typeof window !== "undefined" && error.response?.status === 401) {
       const path = window.location.pathname;
-      const isAuthPage = path.includes("/login") || path.includes("/register") || path.includes("/invite");
+      const isAuthPage =
+        path.includes("/login") ||
+        path.includes("/register") ||
+        path.includes("/invite") ||
+        path.includes("/tech/login");
 
-      if (path.startsWith("/s/")) {
+      if (path.startsWith("/tech")) {
+        // Technician field session handling
+        localStorage.removeItem("serviceos_tech_token");
+        localStorage.removeItem("serviceos_tech_user");
+        if (!isAuthPage) {
+          window.location.href = "/tech/login?session_expired=true";
+        }
+      } else if (path.startsWith("/s/")) {
         // Customer portal session handling
         localStorage.removeItem("serviceos_customer_token");
         localStorage.removeItem("serviceos_customer_context");

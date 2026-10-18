@@ -89,6 +89,7 @@ export function TechAuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       localStorage.setItem("serviceos_tech_token", newToken);
       localStorage.setItem("serviceos_tech_user", JSON.stringify(newUser));
+      document.cookie = `serviceos_tech_token=${encodeURIComponent(newToken)}; path=/; max-age=2592000; SameSite=Lax`;
     }
 
     if (requiresTerms) {
@@ -105,6 +106,7 @@ export function TechAuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("serviceos_tech_token");
       localStorage.removeItem("serviceos_tech_user");
+      document.cookie = "serviceos_tech_token=; path=/; max-age=0; SameSite=Lax";
     }
 
     router.push("/tech/login");

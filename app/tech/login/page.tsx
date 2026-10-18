@@ -169,7 +169,7 @@ export default function TechnicianLoginPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-6 bg-slate-950 text-white select-none">
+    <div className="flex-1 flex flex-col justify-between p-6 sm:p-8 md:p-10 bg-slate-900/80 md:border md:border-slate-800/90 md:rounded-3xl md:shadow-2xl text-white select-none my-auto relative">
       {/* Ambient background glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
