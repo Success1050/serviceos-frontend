@@ -280,24 +280,38 @@ export default function CustomerDashboardPage({ params }: PageProps) {
     }
   };
 
-  // 1-Click Pay Simulation
+  // 1-Click Online Invoice Payment via Live Backend Gateway
   const handlePayInvoice = async () => {
     if (!payingInvoice) return;
     setPaymentProcessing(true);
     setPaymentError(null);
 
     try {
-      // Mock payment simulation
-      await new Promise((r) => setTimeout(r, 1200));
+      // 1. Initialize payment transaction with backend
+      const initRes = await apiClient.post(`/portal/${slug}/invoices/${payingInvoice.id}/pay`, {
+        gateway: "PAYSTACK",
+      });
+      const reference = initRes.data?.reference;
+
+      // 2. Confirm and reconcile invoice payment on database
+      await apiClient.post(`/portal/${slug}/invoices/${payingInvoice.id}/confirm`, {
+        reference,
+      });
+
       setPaymentSuccess(true);
       setTimeout(() => {
         setPayingInvoice(null);
         setPaymentSuccess(false);
         setPaymentError(null);
+        queryClient.invalidateQueries({ queryKey: ["tenant-portal-dashboard", slug] });
         queryClient.invalidateQueries({ queryKey: ["portal-dashboard", slug] });
       }, 1800);
     } catch (err: any) {
-      setPaymentError(err.message || "Payment processing failed. Please verify your payment details.");
+      setPaymentError(
+        err.response?.data?.message ||
+          err.message ||
+          "Payment processing failed. Please verify your payment details."
+      );
     } finally {
       setPaymentProcessing(false);
     }

@@ -302,8 +302,8 @@ export default function CustomerQuoteReviewPage({ params }: PageProps) {
         paymentMethodToken: includeEscrowHold ? `escrow_preauth_${Date.now()}` : undefined,
       };
 
-      // Call accept quote endpoint
-      await apiClient.patch(`/portal/${slug}/quotes/${quoteId}/accept`, payload);
+      // Call accept quote endpoint (POST /portal/:slug/quotes/:id/accept)
+      await apiClient.post(`/portal/${slug}/quotes/${quoteId}/accept`, payload);
 
       // Invalidate queries so dashboard reflects newly accepted quote
       await queryClient.invalidateQueries({ queryKey: ["portal-quote", slug, quoteId] });
