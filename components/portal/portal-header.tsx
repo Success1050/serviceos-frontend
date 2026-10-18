@@ -166,49 +166,49 @@ export function PortalHeader() {
           {/* Brand Logo & Name */}
           <Link
             href={basePath}
-            className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-lg"
+            className="flex items-center gap-2.5 sm:gap-3 group focus:outline-none rounded-lg min-w-0 shrink"
             style={{ outlineColor: "var(--tenant-primary)" }}
           >
             {theme.logoUrl ? (
               <img
                 src={theme.logoUrl}
                 alt={theme.companyName}
-                className="w-10 h-10 rounded-xl object-cover border border-slate-200/80 shadow-xs group-hover:scale-105 transition-transform"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover border border-slate-200/80 shadow-xs group-hover:scale-105 transition-transform shrink-0"
               />
             ) : (
               <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-xs group-hover:scale-105 transition-transform"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-white text-xs sm:text-sm shadow-xs group-hover:scale-105 transition-transform shrink-0"
                 style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
               >
                 {initials}
               </div>
             )}
 
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg group-hover:text-slate-700 transition-colors">
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-base lg:text-lg group-hover:text-slate-700 transition-colors truncate">
                   {theme.companyName}
                 </span>
                 <span
-                  className="w-2 h-2 rounded-full inline-block"
+                  className="w-2 h-2 rounded-full inline-block shrink-0"
                   style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
                 />
               </div>
-              <span className="text-[11px] font-medium text-slate-500 tracking-wide uppercase">
+              <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 tracking-wide uppercase truncate">
                 Customer Care Portal
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          <nav className="hidden lg:flex items-center gap-1 xl:gap-2 shrink-0">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.label}
                   href={link.href}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-2.5 xl:px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                     isActive
                       ? "text-slate-950 font-semibold"
                       : "text-slate-600 hover:text-slate-950 hover:bg-slate-100/70"
@@ -229,14 +229,14 @@ export function PortalHeader() {
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="hidden sm:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-2.5 xl:gap-3 shrink-0">
             {customerSession ? (
               <div className="flex items-center gap-2.5">
                 {/* Multi-Company Switcher Trigger */}
                 {companies.length > 1 && (
                   <button
                     onClick={() => setIsSwitcherOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 transition-all border border-slate-200"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 transition-all border border-slate-200 shrink-0"
                     title="Switch active organization portal"
                   >
                     <Building2 className="w-3.5 h-3.5 text-slate-500" />
@@ -254,7 +254,7 @@ export function PortalHeader() {
                 <button
                   type="button"
                   onClick={openDrawer}
-                  className={`relative p-2 rounded-xl transition-all cursor-pointer ${
+                  className={`relative p-2 rounded-xl transition-all cursor-pointer shrink-0 ${
                     isDrawerOpen
                       ? "bg-slate-100 text-slate-900 shadow-2xs"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -289,21 +289,21 @@ export function PortalHeader() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2.5 p-1.5 pr-3 rounded-xl border border-slate-200/80 hover:bg-slate-50 transition-all text-left"
+                    className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border border-slate-200/80 hover:bg-slate-50 transition-all text-left shrink-0 cursor-pointer"
                   >
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-xs"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-xs shrink-0"
                       style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
                     >
                       {customerInitials}
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-900 leading-tight max-w-[120px] truncate">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold text-slate-900 leading-tight max-w-[100px] xl:max-w-[140px] truncate">
                         {customerSession.customerName}
                       </span>
                       <span className="text-[10px] text-emerald-600 font-medium">Logged In</span>
                     </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   </button>
 
                   {/* Dropdown Menu */}
@@ -378,7 +378,7 @@ export function PortalHeader() {
             ) : (
               <Link
                 href={`${basePath}/login`}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:brightness-95 active:scale-[0.98]"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:brightness-95 active:scale-[0.98] shrink-0"
                 style={{
                   backgroundColor: "var(--tenant-primary, #006937)",
                   boxShadow: "0 2px 10px -2px var(--tenant-primary-glow, rgba(0,105,55,0.3))",
@@ -391,12 +391,12 @@ export function PortalHeader() {
           </div>
 
           {/* Mobile Menu & Notification Buttons */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className="flex lg:hidden items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Mobile Notification Bell */}
             <button
               type="button"
               onClick={openDrawer}
-              className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
               title="Notifications"
               aria-label="Open notifications drawer"
             >
@@ -414,8 +414,9 @@ export function PortalHeader() {
             {customerSession ? (
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-xs"
+                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-xs cursor-pointer"
                 style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+                title={customerSession.customerName}
               >
                 {customerInitials}
               </button>
@@ -432,7 +433,7 @@ export function PortalHeader() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -443,7 +444,7 @@ export function PortalHeader() {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-2 animate-fadeIn shadow-lg">
+        <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-2 animate-fadeIn shadow-lg">
           {customerSession && (
             <div className="p-3 bg-slate-50 rounded-xl mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2.5">

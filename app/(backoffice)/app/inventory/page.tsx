@@ -225,29 +225,29 @@ export default function InventoryPage() {
 
       <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
         {/* Top Header & Overview */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-[#006937] text-white flex items-center justify-center font-bold shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#006937] text-white flex items-center justify-center font-bold shadow-xs shrink-0 mt-0.5 sm:mt-0">
                 <Boxes className="w-5 h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                     Supply Chain, Warehouses & Virtual Trucks
                   </h1>
-                  <Badge variant="success" className="text-xs bg-emerald-50 text-[#006937] border-emerald-200">
+                  <Badge variant="success" className="text-xs bg-emerald-50 text-[#006937] border-emerald-200 shrink-0">
                     Day 10 Active Operations
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                   HQ master stock catalogs, sub-company equipment requisitions & field technician virtual truck inventories.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Button
               type="button"
               variant="outline"

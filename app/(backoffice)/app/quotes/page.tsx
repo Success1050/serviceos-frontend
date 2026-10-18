@@ -211,11 +211,11 @@ export default function QuotesPage() {
         {/* Top Header & Actions Row */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 Quote Builder & Pricing Engine
               </h1>
-              <Badge variant="success" className="text-xs bg-emerald-50 text-[#006937] border-emerald-200">
+              <Badge variant="success" className="text-xs bg-emerald-50 text-[#006937] border-emerald-200 shrink-0">
                 Phase 2 Core Operations
               </Badge>
             </div>
