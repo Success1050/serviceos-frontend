@@ -367,6 +367,7 @@ export function ImportWizardModal({
         rows: parsedRows,
         mapping: columnMapping,
         duplicateRule,
+        activationChoice,
       });
 
       const resData = executeRes.data;
@@ -396,17 +397,17 @@ export function ImportWizardModal({
       onClose={handleModalClose}
       title="Intelligent Customer Import Wizard"
       description="Batch onboard solar and commercial client records with deduplication."
-      maxWidth="2xl"
+      maxWidth="3xl"
     >
       <div className="mt-4">
-        {/* Stepper Progress Header */}
-        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2">
+        {/* Responsive Stepper Progress Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3.5 mb-4 border-b border-slate-100">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none w-full sm:w-auto">
             {[
-              { id: "UPLOAD", label: "1. Upload File" },
-              { id: "MAPPING", label: "2. Column Mapping" },
-              { id: "PREVIEW", label: "3. Deduplication" },
-              { id: "ACTIVATE", label: "4. Activation" },
+              { id: "UPLOAD", label: "1. Upload File", short: "1. Upload" },
+              { id: "MAPPING", label: "2. Column Mapping", short: "2. Mapping" },
+              { id: "PREVIEW", label: "3. Deduplication", short: "3. Dedupe" },
+              { id: "ACTIVATE", label: "4. Activation", short: "4. Activate" },
             ].map((step, idx) => {
               const isCurrent = currentStep === step.id;
               const isPast =
@@ -415,9 +416,9 @@ export function ImportWizardModal({
                 (step.id === "PREVIEW" && currentStep === "ACTIVATE");
 
               return (
-                <div key={step.id} className="flex items-center gap-2">
+                <div key={step.id} className="flex items-center gap-1.5 shrink-0">
                   <div
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
                       isCurrent
                         ? "bg-[#006937] text-white shadow-xs"
                         : isPast
@@ -425,40 +426,56 @@ export function ImportWizardModal({
                         : "bg-slate-100 text-slate-400"
                     }`}
                   >
-                    {isPast ? <Check className="w-3 h-3 text-[#006937]" /> : null}
-                    <span>{step.label}</span>
+                    {isPast ? (
+                      <Check className="w-3 h-3 text-[#006937]" />
+                    ) : null}
+                    <span className="hidden md:inline">{step.label}</span>
+                    <span className="inline md:hidden">{step.short}</span>
                   </div>
-                  {idx < 3 && <ChevronRight className="w-3.5 h-3.5 text-slate-300" />}
+                  {idx < 3 && <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[11px] font-medium text-slate-400 hidden sm:inline">Sample:</span>
-            <Button
+          {/* Sample Download Action (prominent on Upload step, subtle icon on subsequent steps) */}
+          {currentStep === "UPLOAD" ? (
+            <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-auto">
+              <span className="text-[11px] font-medium text-slate-400 hidden lg:inline">Sample:</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadTemplate("xlsx")}
+                className="text-[11px] font-semibold text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 hover:text-emerald-950 border-emerald-300/80 gap-1 h-7 px-2.5 shadow-2xs whitespace-nowrap"
+                title="Download official Excel (.xlsx) customer template"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-700" />
+                Excel (.xlsx)
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDownloadTemplate("csv")}
+                className="text-[11px] text-slate-600 hover:text-slate-900 hover:bg-slate-100 gap-1 h-7 px-2 whitespace-nowrap"
+                title="Download official CSV (.csv) customer template"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                CSV (.csv)
+              </Button>
+            </div>
+          ) : (
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={() => handleDownloadTemplate("xlsx")}
-              className="text-[11px] font-semibold text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100 hover:text-emerald-950 border-emerald-300/80 gap-1 h-7 px-2.5 shadow-2xs"
-              title="Download official Excel (.xlsx) customer template"
+              className="text-[11px] text-slate-400 hover:text-[#006937] flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 self-start sm:self-auto"
+              title="Download official customer spreadsheet template"
             >
-              <Download className="w-3.5 h-3.5 text-emerald-700" />
-              Excel (.xlsx)
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDownloadTemplate("csv")}
-              className="text-[11px] text-slate-600 hover:text-slate-900 hover:bg-slate-100 gap-1 h-7 px-2"
-              title="Download official CSV (.csv) customer template"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
-              CSV (.csv)
-            </Button>
-          </div>
+              <Download className="w-3 h-3 text-slate-400" />
+              <span className="hidden sm:inline">Sample Template</span>
+            </button>
+          )}
         </div>
 
         {/* Global Error Banner */}
