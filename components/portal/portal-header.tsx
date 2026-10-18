@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTenantPortal } from "./portal-context";
 import { CompanySwitcher, CustomerCompany } from "./company-switcher";
+import { useNotifications } from "@/components/providers/notification-provider";
 import apiClient from "@/lib/api/client";
 import {
   PhoneCall,
@@ -18,12 +19,14 @@ import {
   ChevronDown,
   LayoutDashboard,
   User,
+  Bell,
 } from "lucide-react";
 
 export function PortalHeader() {
   const { tenant, theme } = useTenantPortal();
   const pathname = usePathname();
   const router = useRouter();
+  const { unreadCount, openDrawer, isDrawerOpen } = useNotifications();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -247,6 +250,41 @@ export function PortalHeader() {
                   </button>
                 )}
 
+                {/* Customer Notification Bell */}
+                <button
+                  type="button"
+                  onClick={openDrawer}
+                  className={`relative p-2 rounded-xl transition-all cursor-pointer ${
+                    isDrawerOpen
+                      ? "bg-slate-100 text-slate-900 shadow-2xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  }`}
+                  style={
+                    isDrawerOpen
+                      ? {
+                          backgroundColor: "var(--tenant-primary-light, rgba(0,105,55,0.08))",
+                          color: "var(--tenant-primary, #006937)",
+                        }
+                      : {}
+                  }
+                  title={
+                    unreadCount > 0
+                      ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`
+                      : "Notifications & Service Updates"
+                  }
+                  aria-label="Open notifications drawer"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow-sm border-2 border-white ring-1 ring-black/5 animate-pulse"
+                      style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+
                 {/* Customer Profile Dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <button
@@ -287,6 +325,28 @@ export function PortalHeader() {
                           <LayoutDashboard className="w-4 h-4 text-slate-500" />
                           <span>Customer Dashboard</span>
                         </Link>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            openDrawer();
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <Bell className="w-4 h-4 text-slate-500" />
+                            <span>Notifications</span>
+                          </span>
+                          {unreadCount > 0 && (
+                            <span
+                              className="px-1.5 py-0.2 rounded-full text-[10px] font-bold text-white"
+                              style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+                            >
+                              {unreadCount}
+                            </span>
+                          )}
+                        </button>
 
                         {companies.length > 1 && (
                           <button
@@ -330,8 +390,27 @@ export function PortalHeader() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu & Notification Buttons */}
           <div className="flex md:hidden items-center gap-2">
+            {/* Mobile Notification Bell */}
+            <button
+              type="button"
+              onClick={openDrawer}
+              className="relative p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              title="Notifications"
+              aria-label="Open notifications drawer"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full text-white text-[9px] font-bold flex items-center justify-center shadow-xs border border-white"
+                  style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+                >
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+
             {customerSession ? (
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -409,6 +488,32 @@ export function PortalHeader() {
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </Link>
           ))}
+
+          {customerSession && (
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                openDrawer();
+              }}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors text-left"
+            >
+              <span className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-[#006937]" />
+                <span>Notifications & Updates</span>
+              </span>
+              {unreadCount > 0 ? (
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
+                  style={{ backgroundColor: "var(--tenant-primary, #006937)" }}
+                >
+                  {unreadCount} new
+                </span>
+              ) : (
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              )}
+            </button>
+          )}
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
             {customerSession ? (

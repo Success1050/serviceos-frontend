@@ -21,9 +21,11 @@ import {
   Columns,
   ListFilter,
   Grid,
+  Moon,
 } from "lucide-react";
 
 export type CalendarViewMode = "SWIMLANES" | "WEEK" | "MONTH" | "LIST";
+export type SwimlaneHoursMode = "BUSINESS" | "EXTENDED" | "24H";
 
 interface DispatchCalendarProps {
   jobs: Job[];
@@ -37,7 +39,12 @@ interface DispatchCalendarProps {
   onAddNewJob?: () => void;
 }
 
-const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const formatHourLabel = (h: number) => {
+  if (h === 0 || h === 24) return "12 AM";
+  if (h === 12) return "12 PM";
+  if (h < 12) return `${h} AM`;
+  return `${h - 12} PM`;
+};
 
 export function DispatchCalendar({
   jobs,
@@ -50,6 +57,8 @@ export function DispatchCalendar({
   onSlotClick,
   onAddNewJob,
 }: DispatchCalendarProps) {
+  const [hoursMode, setHoursMode] = useState<SwimlaneHoursMode>("BUSINESS");
+
   // Navigation
   const handlePrev = () => {
     const next = new Date(selectedDate);
@@ -96,6 +105,15 @@ export function DispatchCalendar({
     });
   }, [jobs, selectedDate]);
 
+  // Detect off-hours jobs (e.g. 2:41 AM, 11:00 PM) scheduled outside standard 8 AM - 6 PM
+  const offHoursJobs = useMemo(() => {
+    return jobsForSelectedDate.filter((job) => {
+      if (!job.scheduledAt) return false;
+      const h = new Date(job.scheduledAt).getHours();
+      return h < 8 || h >= 18;
+    });
+  }, [jobsForSelectedDate]);
+
   // Status badge utility
   const getJobColorClass = (status: JobStatus) => {
     switch (status) {
@@ -117,9 +135,9 @@ export function DispatchCalendar({
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col overflow-hidden">
       {/* Top Toolbar */}
-      <div className="p-4 border-b border-slate-200/80 bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="p-4 border-b border-slate-200/80 bg-white flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
         {/* Date Navigator */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
             variant="outline"
@@ -156,10 +174,68 @@ export function DispatchCalendar({
                     year: "numeric",
                   })}
           </h2>
+
+          {/* Off-Hours Alert Pill */}
+          {offHoursJobs.length > 0 && viewMode === "SWIMLANES" && hoursMode !== "24H" && (
+            <button
+              onClick={() => setHoursMode("24H")}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition-all shadow-2xs cursor-pointer animate-pulse"
+              title="Click to view 24-hour timeline"
+            >
+              <Moon className="w-3.5 h-3.5 text-amber-600" />
+              <span>
+                {offHoursJobs.length} Off-Hours {offHoursJobs.length === 1 ? "Job" : "Jobs"} (e.g. {new Date(offHoursJobs[0].scheduledAt!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}) &rarr; Switch to 24H View
+              </span>
+            </button>
+          )}
         </div>
 
-        {/* View Switcher Pills */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+        {/* View & Hours Switcher Controls */}
+        <div className="flex items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end flex-wrap">
+          {/* Swimlane Hours Mode Selector */}
+          {viewMode === "SWIMLANES" && (
+            <div className="flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold">
+              <button
+                onClick={() => setHoursMode("BUSINESS")}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  hoursMode === "BUSINESS"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+                title="Standard workday hours (8 AM - 6 PM)"
+              >
+                8am–6pm
+              </button>
+              <button
+                onClick={() => setHoursMode("EXTENDED")}
+                className={`px-2.5 py-1 rounded-lg transition-all ${
+                  hoursMode === "EXTENDED"
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+                title="Extended workday hours (6 AM - 10 PM)"
+              >
+                6am–10pm
+              </button>
+              <button
+                onClick={() => setHoursMode("24H")}
+                className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${
+                  hoursMode === "24H"
+                    ? "bg-white text-[#006937] shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+                title="Full 24-hour daily timeline (12 AM - 11:59 PM)"
+              >
+                <Moon className="w-3 h-3 text-[#006937]" />
+                <span>24-Hour</span>
+                {offHoursJobs.length > 0 && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* View Switcher Pills */}
           <div className="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200/80 text-xs font-semibold">
             <button
               onClick={() => onViewModeChange("SWIMLANES")}
@@ -218,6 +294,8 @@ export function DispatchCalendar({
           jobs={jobsForSelectedDate}
           technicians={technicians}
           selectedDate={selectedDate}
+          hoursMode={hoursMode}
+          onSwitchTo24H={() => setHoursMode("24H")}
           onSelectJob={onSelectJob}
           onSlotClick={onSlotClick}
           getJobColorClass={getJobColorClass}
@@ -266,6 +344,8 @@ function SwimlanesView({
   jobs,
   technicians,
   selectedDate,
+  hoursMode,
+  onSwitchTo24H,
   onSelectJob,
   onSlotClick,
   getJobColorClass,
@@ -273,25 +353,55 @@ function SwimlanesView({
   jobs: Job[];
   technicians: Technician[];
   selectedDate: Date;
+  hoursMode: SwimlaneHoursMode;
+  onSwitchTo24H: () => void;
   onSelectJob: (job: Job) => void;
   onSlotClick?: (technicianId: string, dateTime: string) => void;
   getJobColorClass: (status: JobStatus) => string;
 }) {
-  const startHour = 8;
-  const endHour = 18;
-  const totalMinutes = (endHour - startHour) * 60; // 600 minutes
+  // Compute timeline boundaries based on hoursMode
+  const { startHour, endHour, hoursList, minWidthClass } = useMemo(() => {
+    if (hoursMode === "24H") {
+      return {
+        startHour: 0,
+        endHour: 24,
+        hoursList: Array.from({ length: 24 }, (_, i) => i),
+        minWidthClass: "min-w-[1550px]",
+      };
+    }
+    if (hoursMode === "EXTENDED") {
+      return {
+        startHour: 6,
+        endHour: 22,
+        hoursList: Array.from({ length: 16 }, (_, i) => i + 6),
+        minWidthClass: "min-w-[1200px]",
+      };
+    }
+    // Default "BUSINESS" (8am - 6pm)
+    return {
+      startHour: 8,
+      endHour: 18,
+      hoursList: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17],
+      minWidthClass: "min-w-[950px]",
+    };
+  }, [hoursMode]);
+
+  const totalMinutes = (endHour - startHour) * 60;
 
   return (
-    <div className="overflow-x-auto min-w-[900px] flex-1 select-none">
+    <div className={`overflow-x-auto ${minWidthClass} flex-1 select-none`}>
       {/* Time Header Row */}
       <div className="grid grid-cols-[240px_1fr] border-b border-slate-200/80 bg-slate-50 text-slate-500 text-[11px] font-bold sticky top-0 z-10">
         <div className="p-3 border-r border-slate-200/80 uppercase tracking-wider text-slate-600">
           Field Technicians ({technicians.length})
         </div>
-        <div className="grid grid-cols-10 divide-x divide-slate-200/80">
-          {HOURS.slice(0, 10).map((h) => (
-            <div key={h} className="py-2.5 px-2 text-center">
-              {h}:00 {h < 12 ? "AM" : "PM"}
+        <div
+          className="grid divide-x divide-slate-200/80"
+          style={{ gridTemplateColumns: `repeat(${hoursList.length}, minmax(0, 1fr))` }}
+        >
+          {hoursList.map((h) => (
+            <div key={h} className="py-2.5 px-1 text-center whitespace-nowrap">
+              {formatHourLabel(h)}
             </div>
           ))}
         </div>
@@ -301,6 +411,20 @@ function SwimlanesView({
       <div className="divide-y divide-slate-100">
         {technicians.map((tech) => {
           const techJobs = jobs.filter((j) => j.assignedTechnicianId === tech.id);
+
+          // Jobs within the visible startHour - endHour timeline
+          const visibleJobs = techJobs.filter((j) => {
+            if (!j.scheduledAt) return false;
+            const h = new Date(j.scheduledAt).getHours();
+            return h >= startHour && h < endHour;
+          });
+
+          // Jobs outside the current timeline window (e.g. 2:42 AM when in business hours)
+          const offWindowJobs = techJobs.filter((j) => {
+            if (!j.scheduledAt) return false;
+            const h = new Date(j.scheduledAt).getHours();
+            return h < startHour || h >= endHour;
+          });
 
           // Detect overlaps within this technician's lane
           const doJobsOverlap = (a: Job, b: Job): boolean => {
@@ -324,38 +448,67 @@ function SwimlanesView({
               } hover:bg-slate-50/50 transition-colors group`}
             >
               {/* Left Column: Tech Info Card */}
-              <div className="p-3 border-r border-slate-200/80 flex items-center gap-3 bg-white group-hover:bg-slate-50/50 transition-colors">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#006937] to-emerald-800 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-                  {tech.firstName[0]}
-                  {tech.lastName[0]}
-                </div>
-                <div className="overflow-hidden">
-                  <div className="flex items-center gap-1.5">
-                    <p className="font-bold text-xs text-slate-900 truncate">
-                      {tech.firstName} {tech.lastName}
-                    </p>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Active on duty" />
+              <div className="p-3 border-r border-slate-200/80 flex flex-col justify-between bg-white group-hover:bg-slate-50/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#006937] to-emerald-800 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                    {tech.firstName[0]}
+                    {tech.lastName[0]}
                   </div>
-                  <p className="text-[10px] text-emerald-800 font-semibold truncate">
-                    {tech.tradeSpecialty || "Solar Engineer"}
-                  </p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <p className="text-[10px] text-slate-400">
-                      {techJobs.length} {techJobs.length === 1 ? "job" : "jobs"} assigned
+                  <div className="overflow-hidden">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-bold text-xs text-slate-900 truncate">
+                        {tech.firstName} {tech.lastName}
+                      </p>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Active on duty" />
+                    </div>
+                    <p className="text-[10px] text-emerald-800 font-semibold truncate">
+                      {tech.tradeSpecialty || "Solar Engineer"}
                     </p>
-                    {hasConflict && (
-                      <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 py-0.2 rounded border border-rose-200">
-                        Overlap!
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <p className="text-[10px] text-slate-400">
+                        {techJobs.length} {techJobs.length === 1 ? "job" : "jobs"} assigned
+                      </p>
+                      {hasConflict && (
+                        <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 py-0.2 rounded border border-rose-200">
+                          Overlap!
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Off-Hours notification chips on technician card */}
+                {offWindowJobs.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                      <Moon className="w-3 h-3 text-amber-600" />
+                      <span>{offWindowJobs.length} Off-Hours Visit</span>
+                    </p>
+                    {offWindowJobs.map((job) => (
+                      <button
+                        key={job.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectJob(job);
+                          onSwitchTo24H();
+                        }}
+                        className="w-full text-left p-1 rounded bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[10px] text-amber-900 truncate block font-medium transition-colors"
+                        title="Click to view and inspect off-hours visit"
+                      >
+                        🌙 {new Date(job.scheduledAt!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} • {job.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Right Column: Time Grid Canvas with Relative Positioned Jobs */}
-              <div className="relative h-full grid grid-cols-10 divide-x divide-slate-100 bg-white group-hover:bg-slate-50/30">
+              <div
+                className="relative h-full grid divide-x divide-slate-100 bg-white group-hover:bg-slate-50/30"
+                style={{ gridTemplateColumns: `repeat(${hoursList.length}, minmax(0, 1fr))` }}
+              >
                 {/* Clickable slot backgrounds */}
-                {HOURS.slice(0, 10).map((h) => (
+                {hoursList.map((h) => (
                   <div
                     key={h}
                     onClick={() => {
@@ -366,7 +519,7 @@ function SwimlanesView({
                       }
                     }}
                     className="h-full hover:bg-emerald-50/20 cursor-pointer transition-colors relative"
-                    title={`Click to schedule job with ${tech.firstName} at ${h}:00`}
+                    title={`Click to schedule job with ${tech.firstName} at ${formatHourLabel(h)}`}
                   />
                 ))}
 
@@ -374,14 +527,22 @@ function SwimlanesView({
                 {techJobs.map((job) => {
                   if (!job.scheduledAt) return null;
                   const jobStart = new Date(job.scheduledAt);
-                  const startMins =
-                    (jobStart.getHours() - startHour) * 60 + jobStart.getMinutes();
+                  const jobHour = jobStart.getHours();
+                  const jobMin = jobStart.getMinutes();
+
+                  // Calculate position relative to the active timeline window
+                  const startMins = (jobHour - startHour) * 60 + jobMin;
                   const duration = job.estimatedDuration || 60;
 
-                  // Percentage calculations
+                  // If job is completely outside timeline window, do not render inside grid (rendered in off-hours card)
+                  if (startMins + duration <= 0 || startMins >= totalMinutes) {
+                    return null;
+                  }
+
+                  // Percentage calculations clamped safely
                   const leftPercent = Math.max(0, Math.min(100, (startMins / totalMinutes) * 100));
                   const widthPercent = Math.max(
-                    8,
+                    hoursMode === "24H" ? 4 : 8,
                     Math.min(100 - leftPercent, (duration / totalMinutes) * 100)
                   );
 
@@ -724,12 +885,18 @@ function ListView({
                 )}
               </td>
               <td className="py-3.5 px-4">
-                <span className="font-semibold text-slate-800 block">
-                  {job.scheduledAt ? formatDate(job.scheduledAt, "short") : "Unscheduled"}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  {job.estimatedDuration || 60} mins duration
-                </span>
+                {job.scheduledAt ? (
+                  <div>
+                    <span className="font-bold text-slate-900 block">
+                      {formatDate(job.scheduledAt, "short")} at {new Date(job.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {job.estimatedDuration || 60} mins duration
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-slate-400 font-medium">Unscheduled</span>
+                )}
               </td>
               <td className="py-3.5 px-4">
                 <span

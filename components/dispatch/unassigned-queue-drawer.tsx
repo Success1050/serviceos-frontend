@@ -71,6 +71,17 @@ interface UnassignedQueueDrawerProps {
   isLoading?: boolean;
 }
 
+const getLocalDatetimeString = (dateInput?: string | Date) => {
+  const d = dateInput ? new Date(dateInput) : new Date(Date.now() + 3600000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = d.getFullYear();
+  const m = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  return `${y}-${m}-${day}T${hh}:${mm}`;
+};
+
 export function UnassignedQueueDrawer({
   isOpen,
   onClose,
@@ -92,7 +103,7 @@ export function UnassignedQueueDrawer({
   const [dispatchingRequestId, setDispatchingRequestId] = useState<string | null>(null);
   const [selectedTechId, setSelectedTechId] = useState<string>("");
   const [scheduledDateTime, setScheduledDateTime] = useState<string>(
-    new Date(Date.now() + 3600000).toISOString().slice(0, 16)
+    getLocalDatetimeString()
   );
   const [durationMinutes, setDurationMinutes] = useState<number>(60);
   const [dispatchError, setDispatchError] = useState<string | null>(null);

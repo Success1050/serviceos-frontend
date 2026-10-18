@@ -55,9 +55,18 @@ export function CreateJobModal({
       setError(null);
       setLoadingData(true);
 
-      const defaultTime = initialDate
-        ? new Date(initialDate).toISOString().slice(0, 16)
-        : new Date(Date.now() + 3600000).toISOString().slice(0, 16);
+      const toLocalDatetime = (dateInput?: string | Date) => {
+        const d = dateInput ? new Date(dateInput) : new Date(Date.now() + 3600000);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const y = d.getFullYear();
+        const m = pad(d.getMonth() + 1);
+        const day = pad(d.getDate());
+        const hh = pad(d.getHours());
+        const mm = pad(d.getMinutes());
+        return `${y}-${m}-${day}T${hh}:${mm}`;
+      };
+
+      const defaultTime = toLocalDatetime(initialDate);
       setScheduledAt(defaultTime);
 
       if (initialTechnicianId) {
