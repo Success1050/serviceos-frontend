@@ -89,8 +89,28 @@ export default function DispatchPage() {
     staleTime: 1000 * 60,
   });
 
+  // 3. Fetch Customer Service Requests from Live Backend
+  const { data: serviceRequestsData, refetch: refetchServiceRequests } = useQuery<any[]>({
+    queryKey: ["service-requests"],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get("/service-requests");
+        return Array.isArray(res.data) ? res.data : [];
+      } catch (err) {
+        console.warn("Backend service requests query notice:", err);
+        return [];
+      }
+    },
+    refetchInterval: 8000,
+    staleTime: 5000,
+  });
+
   const jobs = useMemo(() => jobsData || [], [jobsData]);
   const technicians = useMemo(() => techniciansData || [], [techniciansData]);
+  const serviceRequests = useMemo(() => serviceRequestsData || [], [serviceRequestsData]);
+  const openServiceRequests = useMemo(() => {
+    return serviceRequests.filter((r) => r.status === "OPEN");
+  }, [serviceRequests]);
 
   // Derived Unassigned Queue
   const unassignedJobs = useMemo(() => {
@@ -115,10 +135,12 @@ export default function DispatchPage() {
       scheduledToday,
       inProgressOrEnRoute,
       completedToday,
-      unassignedCount: unassignedJobs.length,
+      unassignedCount: unassignedJobs.length + openServiceRequests.length,
+      unassignedJobsCount: unassignedJobs.length,
+      pendingRequestsCount: openServiceRequests.length,
       activeTechs: technicians.length,
     };
-  }, [jobs, selectedDate, unassignedJobs, technicians]);
+  }, [jobs, selectedDate, unassignedJobs, openServiceRequests, technicians]);
 
   // Handlers
   const handleSlotClick = (technicianId: string, dateTime: string) => {
@@ -144,6 +166,43 @@ export default function DispatchPage() {
     setActiveJobForDetail(updatedJob);
     setActionNotice(`Work order "${updatedJob.title}" updated.`);
     setTimeout(() => setActionNotice(null), 4000);
+  };
+
+  const handleDispatchServiceRequest = async (
+    request: any,
+    technicianId: string,
+    scheduledAt: string,
+    estimatedDuration: number
+  ) => {
+    try {
+      const createJobRes = await apiClient.post("/jobs", {
+        title: `Service: ${request.description ? request.description.slice(0, 45) : "Customer Service Call"}`,
+        description: request.description || `Customer requested service via self-serve portal.`,
+        customerRecordId: request.customerRecordId,
+        assignedTechnicianId: technicianId,
+        scheduledAt,
+        estimatedDuration,
+        ignoreConflict: true,
+      });
+
+      const createdJob = createJobRes.data;
+
+      if (createdJob?.id) {
+        await apiClient.patch(`/service-requests/${request.id}/status`, {
+          status: "IN_PROGRESS",
+          jobId: createdJob.id,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["service-requests"] });
+
+      setActionNotice(`Service request accepted & dispatched to technician successfully.`);
+      setTimeout(() => setActionNotice(null), 4000);
+    } catch (err: any) {
+      console.error("Failed to dispatch service request:", err);
+      throw err;
+    }
   };
 
   const handleDispatchJobFromQueue = async (
@@ -430,8 +489,10 @@ export default function DispatchPage() {
         isOpen={isQueueOpen}
         onClose={() => setIsQueueOpen(false)}
         unassignedJobs={unassignedJobs}
+        serviceRequests={openServiceRequests}
         technicians={technicians}
         onDispatchJob={handleDispatchJobFromQueue}
+        onDispatchServiceRequest={handleDispatchServiceRequest}
         onSelectJobForDetail={(job) => {
           setIsQueueOpen(false);
           setActiveJobForDetail(job);

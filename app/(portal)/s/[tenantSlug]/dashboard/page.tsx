@@ -120,6 +120,13 @@ interface DashboardData {
       title: string;
       status: string;
       scheduledAt?: string;
+      assignedTechnician?: {
+        firstName: string;
+        lastName: string;
+        avatarUrl?: string;
+        rating?: number;
+        phone?: string;
+      } | null;
     } | null;
   }>;
 }
@@ -184,8 +191,8 @@ export default function CustomerDashboardPage({ params }: PageProps) {
   };
 
   // Fetch Dashboard Data
-  const fetchDashboard = async () => {
-    setIsLoading(true);
+  const fetchDashboard = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setErrorMessage(null);
 
     const token = typeof window !== "undefined" ? localStorage.getItem("serviceos_customer_token") : null;
@@ -201,16 +208,20 @@ export default function CustomerDashboardPage({ params }: PageProps) {
       console.error("Dashboard fetch error:", err);
       if (err.status === 401) {
         router.push(`/s/${slug}/login?session_expired=true`);
-      } else {
+      } else if (!silent) {
         setErrorMessage(err.message || "Failed to load customer dashboard");
       }
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboard();
+    const interval = setInterval(() => {
+      fetchDashboard(true);
+    }, 6000);
+    return () => clearInterval(interval);
   }, [slug]);
 
   // Submit quick service request
@@ -885,12 +896,25 @@ export default function CustomerDashboardPage({ params }: PageProps) {
                           </div>
                         )}
                         {req.job && (
-                          <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50/60 p-2 rounded-lg border border-blue-100 mt-1">
-                            <Wrench className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                            <span>
-                              Scheduled Job: <strong>{req.job.title}</strong>{" "}
-                              {req.job.scheduledAt && `(${formatDateTime(req.job.scheduledAt)})`}
-                            </span>
+                          <div className="space-y-1 mt-1">
+                            <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50/70 p-2 rounded-lg border border-blue-100">
+                              <Wrench className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              <span>
+                                Scheduled Job: <strong>{req.job.title}</strong>{" "}
+                                {req.job.scheduledAt && `(${formatDateTime(req.job.scheduledAt)})`}
+                              </span>
+                            </div>
+                            {req.job.assignedTechnician && (
+                              <div className="flex items-center gap-1.5 text-emerald-800 bg-emerald-50/70 p-2 rounded-lg border border-emerald-100 text-xs">
+                                <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                <span>
+                                  Assigned Engineer: <strong>{req.job.assignedTechnician.firstName} {req.job.assignedTechnician.lastName}</strong>
+                                  {req.job.assignedTechnician.phone && (
+                                    <span className="text-slate-500 font-mono ml-1.5">({req.job.assignedTechnician.phone})</span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
