@@ -58,6 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .catch(() => {
             // If /auth/me returns 401, client interceptor will handle redirect
           });
+      } else {
+        // No client session: drop any orphaned cookie so proxy.ts doesn't bounce /login -> /app (redirect loop)
+        document.cookie = "serviceos_token=; path=/; max-age=0; SameSite=Lax";
       }
     } catch (e) {
       console.error("Failed to hydrate auth session:", e);

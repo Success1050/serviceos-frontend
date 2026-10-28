@@ -36,6 +36,12 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Expire a client-readable session cookie so the edge proxy stops treating the user as authenticated.
+// Without this, proxy.ts bounces /login back to the protected route -> 401 -> /login (infinite loop).
+const clearCookie = (name: string) => {
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+};
+
 // Response Interceptor: Global 401 & Error Handler
 apiClient.interceptors.response.use(
   (response) => response,
@@ -52,6 +58,7 @@ apiClient.interceptors.response.use(
         // Technician field session handling
         localStorage.removeItem("serviceos_tech_token");
         localStorage.removeItem("serviceos_tech_user");
+        clearCookie("serviceos_tech_token");
         if (!isAuthPage) {
           window.location.href = "/tech/login?session_expired=true";
         }
@@ -66,10 +73,14 @@ apiClient.interceptors.response.use(
             window.location.href = `/s/${slug}/login?session_expired=true`;
           }
         }
-      } else if (!isAuthPage) {
+      } else {
         localStorage.removeItem("serviceos_token");
         localStorage.removeItem("serviceos_user");
-        window.location.href = "/login?session_expired=true";
+        localStorage.removeItem("serviceos_tenant");
+        clearCookie("serviceos_token");
+        if (!isAuthPage) {
+          window.location.href = "/login?session_expired=true";
+        }
       }
     }
 
